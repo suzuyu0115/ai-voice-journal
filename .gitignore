@@ -1,0 +1,10 @@
+# macOS
+.DS_Store
+
+# env files
+.env
+.env.*
+!.env.example
+
+# dependencies
+node_modules/
