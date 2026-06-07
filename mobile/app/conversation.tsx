@@ -1,6 +1,6 @@
 import { View, Text, FlatList, StyleSheet, ActivityIndicator, TouchableOpacity, TextInput } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'expo-router';
 import { useVoiceRecorder } from '../src/hooks/useVoiceRecorder';
 import { useJournalChat } from '../src/hooks/useJournalChat';
@@ -12,6 +12,13 @@ export default function ConversationScreen() {
   const { isRecording, transcript, interimTranscript, startRecording, stopRecording } = useVoiceRecorder();
   const { messages, isLoading, sendUserMessage } = useJournalChat();
   const [textInput, setTextInput] = useState('');
+  const flatListRef = useRef<FlatList>(null);
+
+  useEffect(() => {
+    if (messages.length > 0) {
+      flatListRef.current?.scrollToEnd({ animated: true });
+    }
+  }, [messages]);
 
   const handleRecordToggle = async () => {
     if (isRecording) {
@@ -47,11 +54,13 @@ export default function ConversationScreen() {
       </View>
 
       <FlatList
+        ref={flatListRef}
         data={messages}
         keyExtractor={(_, i) => String(i)}
         renderItem={({ item }) => <ChatBubble message={item} />}
         contentContainerStyle={styles.chatList}
         style={styles.chatArea}
+        onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: true })}
       />
 
       {(interimTranscript || isRecording) && (
