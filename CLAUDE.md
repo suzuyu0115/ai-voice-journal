@@ -77,6 +77,63 @@ mobile/src/
 
 ---
 
+## 開発ワークフロー（必ず守ること）
+
+### Issue → Branch → PR の順序
+
+```
+1. Issue 作成（gh issue create）
+2. ブランチ作成（feature/issue-X-タイトル）
+3. テストファイル作成（it.todo スケルトン）※実装前に必須
+4. 実装
+5. push（pre-push hook: lint・coverage・e2e が自動実行）
+6. PR 作成（gh pr create）
+7. ユーザーがレビュー・マージ
+```
+
+### Claude が絶対にやってはいけないこと
+
+- **PR のマージは絶対に行わない**（必ずユーザーが行う）
+- **Issue を PR マージ前にクローズしない**（`Closes #X` を PR に書けば自動クローズされる）
+- **main ブランチに直接コミットしない**
+
+### Issue 作成時のルール
+
+```bash
+# Issue 作成（GitHub Actions が自動でプロジェクトに追加する）
+gh issue create \
+  --repo suzuyu0115/ai-voice-journal \
+  --title "【タイプ】タイトル" \
+  --label "ラベル,MVP"
+
+# ※ GitHub Actions（.github/workflows/add-to-project.yml）が
+#   新規 Issue・PR を自動で Project #6 に追加する
+#   → 手動での project 追加は不要
+```
+
+### PR 作成時のルール
+
+```bash
+gh pr create \
+  --repo suzuyu0115/ai-voice-journal \
+  --base main \
+  --title "#X タイトル" \
+  --body "Closes #X を必ず含める"
+```
+
+- **base は常に `main`**（依存ブランチがある場合はその旨を PR に明記）
+- PR body に `Closes #X` を必ず記載する
+- PR 番号と Issue 番号は別物（混同しない）
+
+### カバレッジルール
+
+- 新しい `src/` ファイルを追加したら、同時にテストファイルも作成する
+- 実装前に `it.todo` スケルトンを書く
+- push 前に coverage 80% 以上を維持する（pre-push hook で自動チェック）
+- `src/lib/supabase.ts` と `app/` はカバレッジ対象外（設定済み）
+
+---
+
 ## 現在の実装状況（2026-06-07時点）
 
 ### 完了済み
