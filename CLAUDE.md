@@ -29,7 +29,7 @@ ai-voice-journal/
 ```bash
 cd mobile
 npm install
-npx expo run:ios   # Expo Go 不可、dev build 必須
+npx expo run:ios   # Expo Go 不可、dev build 必須（Xcode必須）
 ```
 
 ## 環境変数
@@ -74,3 +74,60 @@ mobile/src/
 - Expo Go では動作しない（`@react-native-voice/voice` がネイティブモジュールのため）
 - `api/` は MVP では触らない
 - 実装はチケット（GitHub Issues）単位で進める
+
+---
+
+## 現在の実装状況（2026-06-07時点）
+
+### 完了済み
+- Expo SDK 56 プロジェクト作成（`mobile/`）
+- パッケージインストール済み: expo-router, expo-sqlite, expo-av, expo-notifications, expo-haptics, async-storage, zustand, @google/genai
+- app.json 設定済み（scheme, マイク権限, plugins）
+- GitHub リポジトリ作成・push済み
+- GitHub Issues 作成済み（#1〜#9）
+- GitHub Project 作成済み（Issues紐付け済み）
+- Xcode インストール中
+
+### 未インストールのパッケージ（次のセッションで対応）
+```bash
+cd mobile
+npm install @react-native-voice/voice expo-speech @supabase/supabase-js
+```
+
+### コードの状態
+- `mobile/App.tsx` は create-expo-app のデフォルト（Hello World）のまま
+- `app/`・`src/` ディレクトリはまだ存在しない
+
+---
+
+## GitHub
+
+- リポジトリ: https://github.com/suzuyu0115/ai-voice-journal
+- Project（カンバン）: https://github.com/users/suzuyu0115/projects/6
+- Issues: https://github.com/suzuyu0115/ai-voice-journal/issues
+
+## Issue一覧（MVP）
+
+| # | タイトル | ラベル |
+|---|---------|--------|
+| #1 | 残パッケージ・プロジェクト基盤構築 | setup |
+| #2 | Supabaseセットアップ | setup |
+| #3 | 3画面スケルトン作成 | setup |
+| #4 | STT実装 | feature |
+| #5 | Gemini API連携・会話管理 | feature |
+| #6 | TTS実装 | feature |
+| #7 | 会話UI実装 | feature |
+| #8 | サマリー生成・感情スコア | feature |
+| #9 | 日記一覧・Supabase保存・ストリーク | feature |
+
+## 推奨着手順序
+
+1. **#1** 残パッケージインストール・expo-router初期化（Xcodeインストール完了後に `npx expo run:ios` で動作確認）
+2. **#2** Supabaseセットアップ（ブラウザで完結、Xcode不要）
+3. **#3** 3画面スケルトン
+4. **#4** STT実装
+5. **#5** Gemini API連携
+6. **#6** TTS実装
+7. **#7** 会話UI
+8. **#8** サマリー生成
+9. **#9** 日記一覧・保存
