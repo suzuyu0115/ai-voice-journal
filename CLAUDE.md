@@ -17,7 +17,7 @@ ai-voice-journal/
 | レイヤー | 技術 |
 |---------|------|
 | モバイル | React Native + Expo 56 (TypeScript) |
-| STT | `@react-native-voice/voice`（iOS native） |
+| STT | `expo-speech-recognition`（iOS native、旧 `@react-native-voice/voice` は非推奨のため変更） |
 | AI 会話 | Gemini API `gemini-2.5-flash`（テキストのみ） |
 | TTS | `expo-speech` |
 | 状態管理 | Zustand |
@@ -71,7 +71,7 @@ mobile/src/
 ## 注意事項
 
 - `.env` は絶対にコミットしない（`.gitignore` で除外済み）
-- Expo Go では動作しない（`@react-native-voice/voice` がネイティブモジュールのため）
+- Expo Go では動作しない（`expo-speech-recognition` がネイティブモジュールのため）
 - `api/` は MVP では触らない
 - 実装はチケット（GitHub Issues）単位で進める
 
@@ -81,22 +81,24 @@ mobile/src/
 
 ### 完了済み
 - Expo SDK 56 プロジェクト作成（`mobile/`）
-- パッケージインストール済み: expo-router, expo-sqlite, expo-av, expo-notifications, expo-haptics, async-storage, zustand, @google/genai
-- app.json 設定済み（scheme, マイク権限, plugins）
+- 全パッケージインストール済み: expo-router, expo-sqlite, expo-av, expo-notifications, expo-haptics, async-storage, zustand, @google/genai, expo-speech, expo-speech-recognition, @supabase/supabase-js
+- app.json 設定済み（scheme, マイク権限, expo-speech-recognition plugin）
 - GitHub リポジトリ作成・push済み
 - GitHub Issues 作成済み（#1〜#9）
 - GitHub Project 作成済み（Issues紐付け済み）
 - Xcode インストール中
-
-### 未インストールのパッケージ（次のセッションで対応）
-```bash
-cd mobile
-npm install @react-native-voice/voice expo-speech @supabase/supabase-js
-```
+- `app/` ディレクトリ・3画面スケルトン作成済み（#1・#3 完了）
+- `src/lib/gemini.ts`・`src/lib/supabase.ts`・`src/store/journalStore.ts` 作成済み
+- `package.json` の `main` を `expo-router/entry` に変更済み
 
 ### コードの状態
-- `mobile/App.tsx` は create-expo-app のデフォルト（Hello World）のまま
-- `app/`・`src/` ディレクトリはまだ存在しない
+- `app/_layout.tsx`・`app/index.tsx`・`app/conversation.tsx`・`app/summary/[id].tsx` スケルトン作成済み
+- `src/hooks/`・`src/components/` は未実装（#4〜#7 で対応）
+- `mobile/.env` は未作成（APIキー設定が必要）
+
+### 次のステップ
+- **#2** Supabaseセットアップ（ブラウザでテーブル作成 → `.env` に記載）
+- Xcode インストール完了後 → `npx expo run:ios` で動作確認
 
 ---
 
