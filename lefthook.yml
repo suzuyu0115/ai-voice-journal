@@ -1,0 +1,14 @@
+pre-push:
+  parallel: true
+  jobs:
+    - name: lint
+      root: mobile/
+      run: npm run lint
+
+    - name: typecheck
+      root: mobile/
+      run: npm run typecheck
+
+    - name: test
+      root: mobile/
+      run: npm test -- --passWithNoTests --ci
