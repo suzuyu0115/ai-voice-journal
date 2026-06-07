@@ -9,6 +9,18 @@ pre-push:
       root: mobile/
       run: npm run typecheck
 
-    - name: test
+    - name: coverage
       root: mobile/
-      run: npm test -- --passWithNoTests --ci
+      run: npm run test:coverage -- --passWithNoTests --ci
+
+    - name: e2e
+      run: |
+        if ! command -v maestro &> /dev/null; then
+          echo "⚠️  Maestro 未インストールのため E2E スキップ（brew install maestro で導入可能）"
+          exit 0
+        fi
+        if ! xcrun simctl list devices | grep -q "Booted"; then
+          echo "⚠️  iOS シミュレーター未起動のため E2E スキップ"
+          exit 0
+        fi
+        maestro test .maestro/
