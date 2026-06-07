@@ -1,5 +1,6 @@
-import { View, Text, FlatList, StyleSheet, ActivityIndicator, TouchableOpacity } from 'react-native';
+import { View, Text, FlatList, StyleSheet, ActivityIndicator, TouchableOpacity, TextInput } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useState } from 'react';
 import { useRouter } from 'expo-router';
 import { useVoiceRecorder } from '../src/hooks/useVoiceRecorder';
 import { useJournalChat } from '../src/hooks/useJournalChat';
@@ -10,6 +11,7 @@ export default function ConversationScreen() {
   const router = useRouter();
   const { isRecording, transcript, interimTranscript, startRecording, stopRecording } = useVoiceRecorder();
   const { messages, isLoading, sendUserMessage } = useJournalChat();
+  const [textInput, setTextInput] = useState('');
 
   const handleRecordToggle = async () => {
     if (isRecording) {
@@ -20,6 +22,13 @@ export default function ConversationScreen() {
     } else {
       await startRecording();
     }
+  };
+
+  const handleTextSend = async () => {
+    if (!textInput.trim()) return;
+    const text = textInput.trim();
+    setTextInput('');
+    await sendUserMessage(text);
   };
 
   const handleSummarize = () => {
@@ -52,6 +61,26 @@ export default function ConversationScreen() {
           </Text>
         </View>
       )}
+
+      <View style={styles.textRow}>
+        <TextInput
+          style={styles.textInput}
+          value={textInput}
+          onChangeText={setTextInput}
+          placeholder="テキストで入力..."
+          placeholderTextColor="#bbb"
+          returnKeyType="send"
+          onSubmitEditing={handleTextSend}
+          editable={!isLoading}
+        />
+        <TouchableOpacity
+          style={[styles.sendButton, (!textInput.trim() || isLoading) && styles.sendButtonDisabled]}
+          onPress={handleTextSend}
+          disabled={!textInput.trim() || isLoading}
+        >
+          <Text style={styles.sendButtonText}>送信</Text>
+        </TouchableOpacity>
+      </View>
 
       <View style={styles.footer}>
         {isLoading ? (
@@ -93,6 +122,32 @@ const styles = StyleSheet.create({
     borderColor: '#E0E0E0',
   },
   interimText: { color: '#888', fontSize: 15, fontStyle: 'italic' },
-  footer: { alignItems: 'center', paddingVertical: 24, gap: 12 },
+  textRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginHorizontal: 16,
+    marginBottom: 8,
+    gap: 8,
+  },
+  textInput: {
+    flex: 1,
+    height: 44,
+    borderWidth: 1,
+    borderColor: '#ddd',
+    borderRadius: 22,
+    paddingHorizontal: 16,
+    fontSize: 15,
+    color: '#1a1a1a',
+    backgroundColor: '#F8F9FA',
+  },
+  sendButton: {
+    backgroundColor: '#4A90E2',
+    paddingHorizontal: 18,
+    paddingVertical: 10,
+    borderRadius: 22,
+  },
+  sendButtonDisabled: { backgroundColor: '#ccc' },
+  sendButtonText: { color: '#fff', fontWeight: '600', fontSize: 14 },
+  footer: { alignItems: 'center', paddingVertical: 20, gap: 10 },
   hint: { fontSize: 13, color: '#aaa' },
 });
