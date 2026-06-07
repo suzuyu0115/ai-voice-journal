@@ -1,4 +1,5 @@
-import { View, Text, FlatList, StyleSheet, ActivityIndicator, SafeAreaView, TouchableOpacity } from 'react-native';
+import { View, Text, FlatList, StyleSheet, ActivityIndicator, TouchableOpacity } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useVoiceRecorder } from '../src/hooks/useVoiceRecorder';
 import { useJournalChat } from '../src/hooks/useJournalChat';
