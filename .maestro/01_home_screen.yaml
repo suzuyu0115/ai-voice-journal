@@ -1,0 +1,5 @@
+appId: com.anonymous.ai-voice-journal
+---
+- launchApp
+- assertVisible: "AI Voice Journal"
+- assertVisible: "会話を始める"

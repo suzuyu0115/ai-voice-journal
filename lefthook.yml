@@ -1,0 +1,26 @@
+pre-push:
+  parallel: true
+  jobs:
+    - name: lint
+      root: mobile/
+      run: npm run lint
+
+    - name: typecheck
+      root: mobile/
+      run: npm run typecheck
+
+    - name: coverage
+      root: mobile/
+      run: npm run test:coverage -- --passWithNoTests --ci
+
+    - name: e2e
+      run: |
+        if ! command -v maestro &> /dev/null; then
+          echo "⚠️  Maestro 未インストールのため E2E スキップ（brew install maestro で導入可能）"
+          exit 0
+        fi
+        if ! xcrun simctl list devices | grep -q "Booted"; then
+          echo "⚠️  iOS シミュレーター未起動のため E2E スキップ"
+          exit 0
+        fi
+        maestro test .maestro/

@@ -1,0 +1,9 @@
+appId: com.anonymous.ai-voice-journal
+---
+- launchApp
+- tapOn: "会話を始める"
+- assertVisible: "会話画面"
+- tapOn: "サマリーへ（仮）"
+- assertVisible: "サマリー画面"
+- tapOn: "ホームへ戻る"
+- assertVisible: "AI Voice Journal"
