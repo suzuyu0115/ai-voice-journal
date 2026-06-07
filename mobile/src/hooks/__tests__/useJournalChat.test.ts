@@ -12,6 +12,9 @@ jest.mock('../../lib/gemini', () => ({
 jest.mock('expo-speech', () => ({
   speak: jest.fn(),
   stop: jest.fn(),
+  getAvailableVoicesAsync: jest.fn().mockResolvedValue([
+    { identifier: 'com.apple.ttsbundle.Kyoko-premium', language: 'ja-JP', quality: 'enhanced', name: 'Kyoko' },
+  ]),
 }));
 
 const mockSendMessage = sendMessage as jest.Mock;
@@ -62,12 +65,12 @@ describe('useJournalChat', () => {
     expect(result.current.isLoading).toBe(false);
   });
 
-  it('AI返答を expo-speech で読み上げる', async () => {
+  it('AI返答を expo-speech で読み上げる（rate・pitch・voice 指定）', async () => {
     const { result } = renderJournalChatHook();
     await act(async () => { await result.current.sendUserMessage('今日は疲れた'); });
     expect(mockSpeak).toHaveBeenCalledWith(
       '今日はどんなことがありましたか？',
-      expect.objectContaining({ language: 'ja-JP' })
+      expect.objectContaining({ language: 'ja-JP', rate: 0.45, pitch: 1.1 })
     );
   });
 
@@ -85,5 +88,26 @@ describe('useJournalChat', () => {
     act(() => { result.current.clearMessages(); });
     expect(result.current.messages).toEqual([]);
     expect(mockStop).toHaveBeenCalled();
+  });
+
+  it('enhanced voice がない場合 Kyoko にフォールバックする', async () => {
+    (Speech.getAvailableVoicesAsync as jest.Mock).mockResolvedValueOnce([
+      { identifier: 'com.apple.ttsbundle.Kyoko-compact', language: 'ja-JP', quality: 'default', name: 'Kyoko' },
+    ]);
+    const { result } = renderJournalChatHook();
+    await act(async () => {}); // useEffect の非同期 voice 選択を完了させる
+    await act(async () => { await result.current.sendUserMessage('テスト'); });
+    expect(mockSpeak).toHaveBeenCalledWith(
+      expect.any(String),
+      expect.objectContaining({ voice: 'com.apple.ttsbundle.Kyoko-compact' })
+    );
+  });
+
+  it('getAvailableVoicesAsync が失敗しても speak は呼ばれる', async () => {
+    (Speech.getAvailableVoicesAsync as jest.Mock).mockRejectedValueOnce(new Error('unavailable'));
+    const { result } = renderJournalChatHook();
+    await act(async () => {}); // useEffect の非同期 voice 選択を完了させる
+    await act(async () => { await result.current.sendUserMessage('テスト'); });
+    expect(mockSpeak).toHaveBeenCalled();
   });
 });
