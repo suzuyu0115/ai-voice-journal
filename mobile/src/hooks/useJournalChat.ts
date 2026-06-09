@@ -55,7 +55,7 @@ export function useJournalChat(): UseJournalChatReturn {
 
       const hasEndMarker = accumulated.includes(END_MARKER);
       const cleanText = accumulated.replace(END_MARKER, '').trim();
-      const finalMessages = [...nextMessages, { role: 'model', text: cleanText }];
+      const finalMessages: Message[] = [...nextMessages, { role: 'model', text: cleanText }];
       const rallyCount = finalMessages.filter(m => m.role === 'user').length;
 
       if (hasEndMarker || rallyCount >= MAX_RALLIES) {

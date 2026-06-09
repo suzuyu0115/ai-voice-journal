@@ -2,10 +2,10 @@ import { View, Text, FlatList, StyleSheet, ActivityIndicator, TouchableOpacity, 
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useRouter } from 'expo-router';
-import { useVoiceRecorder } from '../src/hooks/useVoiceRecorder';
-import { useJournalChat } from '../src/hooks/useJournalChat';
-import { RecordButton } from '../src/components/RecordButton';
-import { ChatBubble } from '../src/components/ChatBubble';
+import { useVoiceRecorder } from '../../src/hooks/useVoiceRecorder';
+import { useJournalChat } from '../../src/hooks/useJournalChat';
+import { RecordButton } from '../../src/components/RecordButton';
+import { ChatBubble } from '../../src/components/ChatBubble';
 
 export default function ConversationScreen() {
   const router = useRouter();
