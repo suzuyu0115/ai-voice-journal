@@ -22,7 +22,7 @@ ai-voice-journal/
 | TTS | `expo-speech` |
 | 状態管理 | Zustand |
 | DB / Auth | Supabase |
-| ナビゲーション | expo-router |
+| ナビゲーション | expo-router + `@expo/vector-icons`（タブアイコン）|
 
 ## 主要コマンド
 
@@ -46,9 +46,26 @@ EXPO_PUBLIC_SUPABASE_ANON_KEY=
 
 | ファイル | 画面 |
 |---------|------|
-| `app/index.tsx` | ホーム（日記一覧） |
-| `app/conversation.tsx` | 会話（メイン機能） |
-| `app/summary/[id].tsx` | サマリー（保存・確認） |
+| `app/(tabs)/index.tsx` | ホーム（日記一覧） |
+| `app/(tabs)/conversation.tsx` | 会話（メイン機能） |
+| `app/(tabs)/calendar.tsx` | カレンダー（感情ヒートマップ）|
+| `app/(tabs)/settings.tsx` | 設定 |
+| `app/summary/[id].tsx` | サマリー（保存・確認、タブ外フルスクリーン） |
+
+### ナビゲーション構成
+
+```
+app/
+├── _layout.tsx          # ルート Stack（tabs + summary）
+├── (tabs)/
+│   ├── _layout.tsx      # 4タブ設定（Ionicons アイコン）
+│   ├── index.tsx        # ホーム
+│   ├── conversation.tsx # 会話
+│   ├── calendar.tsx     # カレンダー
+│   └── settings.tsx     # 設定
+└── summary/
+    └── [id].tsx         # サマリー（タブバーなし）
+```
 
 ## 会話フロー（コア機能）
 
@@ -143,28 +160,27 @@ gh pr create \
 
 ---
 
-## 現在の実装状況（2026-06-07時点）
+## 現在の実装状況（2026-06-09時点）
 
 ### 完了済み
 - Expo SDK 56 プロジェクト作成（`mobile/`）
-- 全パッケージインストール済み: expo-router, expo-sqlite, expo-av, expo-notifications, expo-haptics, async-storage, zustand, @google/genai, expo-speech, expo-speech-recognition, @supabase/supabase-js
+- 全パッケージインストール済み: expo-router, expo-sqlite, expo-av, expo-notifications, expo-haptics, async-storage, zustand, @google/genai, expo-speech, expo-speech-recognition, @supabase/supabase-js, @expo/vector-icons
 - app.json 設定済み（scheme, マイク権限, expo-speech-recognition plugin）
 - GitHub リポジトリ作成・push済み
-- GitHub Issues 作成済み（#1〜#9）
-- GitHub Project 作成済み（Issues紐付け済み）
-- Xcode インストール中
-- `app/` ディレクトリ・3画面スケルトン作成済み（#1・#3 完了）
 - `src/lib/gemini.ts`・`src/lib/supabase.ts`・`src/store/journalStore.ts` 作成済み
-- `package.json` の `main` を `expo-router/entry` に変更済み
+- **#19** フッターナビゲーションバー実装済み（4タブ: ホーム・会話・カレンダー・設定）
+- **#16** 会話機能フル実装（STT・Gemini・TTS・UI）→ PR レビュー待ち
 
 ### コードの状態
-- `app/_layout.tsx`・`app/index.tsx`・`app/conversation.tsx`・`app/summary/[id].tsx` スケルトン作成済み
-- `src/hooks/`・`src/components/` は未実装（#4〜#7 で対応）
-- `mobile/.env` は未作成（APIキー設定が必要）
+- `app/(tabs)/` 配下に4画面（index, conversation, calendar, settings）
+- `app/summary/[id].tsx` スケルトン（#8 で実装予定）
+- `src/hooks/useVoiceRecorder.ts`・`src/hooks/useJournalChat.ts` 実装済み
+- `src/components/RecordButton.tsx`・`src/components/ChatBubble.tsx` 実装済み
 
 ### 次のステップ
-- **#2** Supabaseセットアップ（ブラウザでテーブル作成 → `.env` に記載）
-- Xcode インストール完了後 → `npx expo run:ios` で動作確認
+- **#16** PR マージ（会話機能）
+- **#8** サマリー生成・感情スコア（#16 マージ後）
+- **#9** 日記一覧・Supabase 保存・ストリーク
 
 ---
 
@@ -176,26 +192,24 @@ gh pr create \
 
 ## Issue一覧（MVP）
 
-| # | タイトル | ラベル |
-|---|---------|--------|
-| #1 | 残パッケージ・プロジェクト基盤構築 | setup |
-| #2 | Supabaseセットアップ | setup |
-| #3 | 3画面スケルトン作成 | setup |
-| #4 | STT実装 | feature |
-| #5 | Gemini API連携・会話管理 | feature |
-| #6 | TTS実装 | feature |
-| #7 | 会話UI実装 | feature |
-| #8 | サマリー生成・感情スコア | feature |
-| #9 | 日記一覧・Supabase保存・ストリーク | feature |
+| # | タイトル | ラベル | 状態 |
+|---|---------|--------|------|
+| #1 | 残パッケージ・プロジェクト基盤構築 | setup | 完了 |
+| #2 | Supabaseセットアップ | setup | 完了 |
+| #3 | 3画面スケルトン作成 | setup | 完了 |
+| #4 | STT実装 | feature | 完了（#16に統合）|
+| #5 | Gemini API連携・会話管理 | feature | 完了（#16に統合）|
+| #6 | TTS実装 | feature | 完了（#16に統合）|
+| #7 | 会話UI実装 | feature | 完了（#16に統合）|
+| #8 | サマリー生成・感情スコア | feature | 未着手 |
+| #9 | 日記一覧・Supabase保存・ストリーク | feature | 未着手 |
+| #16 | 会話機能フル実装（STT・Gemini・TTS・UI）| feature | PR レビュー待ち |
+| #19 | フッターナビゲーションバー実装 | feature | PR レビュー待ち |
 
 ## 推奨着手順序
 
-1. **#1** 残パッケージインストール・expo-router初期化（Xcodeインストール完了後に `npx expo run:ios` で動作確認）
-2. **#2** Supabaseセットアップ（ブラウザで完結、Xcode不要）
-3. **#3** 3画面スケルトン
-4. **#4** STT実装
-5. **#5** Gemini API連携
-6. **#6** TTS実装
-7. **#7** 会話UI
-8. **#8** サマリー生成
-9. **#9** 日記一覧・保存
+1. ~~#1〜#7~~ 完了済み
+2. **#16** PR マージ（会話機能）
+3. **#8** サマリー生成・感情スコア（#16 マージ後）
+4. **#9** 日記一覧・Supabase 保存・ストリーク
+5. **#19** フッターナビゲーション PR マージ
