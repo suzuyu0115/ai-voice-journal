@@ -1,6 +1,6 @@
-import { View, Text, FlatList, StyleSheet, ActivityIndicator, TouchableOpacity, TextInput } from 'react-native';
+import { View, Text, FlatList, StyleSheet, ActivityIndicator, TouchableOpacity, TextInput, KeyboardAvoidingView, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { useRouter } from 'expo-router';
 import { useVoiceRecorder } from '../src/hooks/useVoiceRecorder';
 import { useJournalChat } from '../src/hooks/useJournalChat';
@@ -10,9 +10,10 @@ import { ChatBubble } from '../src/components/ChatBubble';
 export default function ConversationScreen() {
   const router = useRouter();
   const { isRecording, transcript, interimTranscript, startRecording, stopRecording } = useVoiceRecorder();
-  const { messages, isLoading, sendUserMessage } = useJournalChat();
+  const { messages, isLoading, errorMessage, isConversationComplete, sendUserMessage } = useJournalChat();
   const [textInput, setTextInput] = useState('');
   const flatListRef = useRef<FlatList>(null);
+  const waitingForTranscriptRef = useRef(false);
 
   useEffect(() => {
     if (messages.length > 0) {
@@ -20,16 +21,28 @@ export default function ConversationScreen() {
     }
   }, [messages]);
 
-  const handleRecordToggle = async () => {
+  useEffect(() => {
+    if (isConversationComplete) {
+      router.push('/summary/new');
+    }
+  }, [isConversationComplete, router]);
+
+  useEffect(() => {
+    if (!isRecording && waitingForTranscriptRef.current) {
+      waitingForTranscriptRef.current = false;
+      if (transcript) setTextInput(transcript);
+    }
+  }, [isRecording, transcript]);
+
+  const handleRecordToggle = useCallback(async () => {
     if (isRecording) {
+      waitingForTranscriptRef.current = true;
       stopRecording();
-      if (transcript) {
-        await sendUserMessage(transcript);
-      }
     } else {
+      setTextInput('');
       await startRecording();
     }
-  };
+  }, [isRecording, startRecording, stopRecording]);
 
   const handleTextSend = async () => {
     if (!textInput.trim()) return;
@@ -43,70 +56,81 @@ export default function ConversationScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.title}>今日の日記</Text>
-        {messages.length >= 2 && (
-          <TouchableOpacity onPress={handleSummarize} style={styles.summarizeButton}>
-            <Text style={styles.summarizeText}>まとめる</Text>
-          </TouchableOpacity>
+    <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
+      <KeyboardAvoidingView
+        style={styles.keyboardAvoid}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      >
+        <View style={styles.header}>
+          <Text style={styles.title}>今日の日記</Text>
+          {messages.length >= 2 && (
+            <TouchableOpacity onPress={handleSummarize} style={styles.summarizeButton}>
+              <Text style={styles.summarizeText}>まとめる</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+
+        <FlatList
+          ref={flatListRef}
+          data={messages}
+          keyExtractor={(_, i) => String(i)}
+          renderItem={({ item }) => <ChatBubble message={item} />}
+          contentContainerStyle={styles.chatList}
+          style={styles.chatArea}
+        />
+
+        {errorMessage && (
+          <View style={styles.errorContainer}>
+            <Text style={styles.errorText}>エラー: {errorMessage}</Text>
+          </View>
         )}
-      </View>
 
-      <FlatList
-        ref={flatListRef}
-        data={messages}
-        keyExtractor={(_, i) => String(i)}
-        renderItem={({ item }) => <ChatBubble message={item} />}
-        contentContainerStyle={styles.chatList}
-        style={styles.chatArea}
-        onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: true })}
-      />
+        {(interimTranscript || isRecording) && (
+          <View style={styles.interimContainer}>
+            <Text style={styles.interimText}>
+              {interimTranscript || '聞いています...'}
+            </Text>
+          </View>
+        )}
 
-      {(interimTranscript || isRecording) && (
-        <View style={styles.interimContainer}>
-          <Text style={styles.interimText}>
-            {interimTranscript || '聞いています...'}
+        <View style={styles.textRow}>
+          <TextInput
+            style={styles.textInput}
+            value={textInput}
+            onChangeText={setTextInput}
+            placeholder="テキストで入力..."
+            placeholderTextColor="#bbb"
+            returnKeyType="send"
+            onSubmitEditing={handleTextSend}
+            editable={!isLoading}
+          />
+          <TouchableOpacity
+            style={[styles.sendButton, (!textInput.trim() || isLoading) && styles.sendButtonDisabled]}
+            onPress={handleTextSend}
+            disabled={!textInput.trim() || isLoading}
+          >
+            <Text style={styles.sendButtonText}>送信</Text>
+          </TouchableOpacity>
+        </View>
+
+        <View style={styles.footer}>
+          {isLoading ? (
+            <ActivityIndicator size="large" color="#4A90E2" />
+          ) : (
+            <RecordButton isRecording={isRecording} onPress={handleRecordToggle} />
+          )}
+          <Text style={styles.hint}>
+            {isRecording ? 'もう一度タップで送信' : 'タップして話す'}
           </Text>
         </View>
-      )}
-
-      <View style={styles.textRow}>
-        <TextInput
-          style={styles.textInput}
-          value={textInput}
-          onChangeText={setTextInput}
-          placeholder="テキストで入力..."
-          placeholderTextColor="#bbb"
-          returnKeyType="send"
-          onSubmitEditing={handleTextSend}
-          editable={!isLoading}
-        />
-        <TouchableOpacity
-          style={[styles.sendButton, (!textInput.trim() || isLoading) && styles.sendButtonDisabled]}
-          onPress={handleTextSend}
-          disabled={!textInput.trim() || isLoading}
-        >
-          <Text style={styles.sendButtonText}>送信</Text>
-        </TouchableOpacity>
-      </View>
-
-      <View style={styles.footer}>
-        {isLoading ? (
-          <ActivityIndicator size="large" color="#4A90E2" />
-        ) : (
-          <RecordButton isRecording={isRecording} onPress={handleRecordToggle} />
-        )}
-        <Text style={styles.hint}>
-          {isRecording ? 'もう一度タップで送信' : 'タップして話す'}
-        </Text>
-      </View>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#fff' },
+  keyboardAvoid: { flex: 1 },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -159,4 +183,14 @@ const styles = StyleSheet.create({
   sendButtonText: { color: '#fff', fontWeight: '600', fontSize: 14 },
   footer: { alignItems: 'center', paddingVertical: 20, gap: 10 },
   hint: { fontSize: 13, color: '#aaa' },
+  errorContainer: {
+    marginHorizontal: 16,
+    marginBottom: 8,
+    padding: 12,
+    backgroundColor: '#FFF0F0',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#FFB3B3',
+  },
+  errorText: { color: '#CC0000', fontSize: 13 },
 });

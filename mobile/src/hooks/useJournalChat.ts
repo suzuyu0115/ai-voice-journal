@@ -1,86 +1,91 @@
-import { useState, useCallback, useEffect, useRef } from 'react';
+import { useState, useCallback } from 'react';
 import * as Speech from 'expo-speech';
-import { sendMessage } from '../lib/gemini';
+import { sendMessageStream } from '../lib/gemini';
 import type { Message } from '../lib/gemini';
+
+export const MAX_RALLIES = 3;
+const END_MARKER = '[END]';
+export const INITIAL_MESSAGE = 'こんにちは！今日はどんなことがありましたか？';
+export const CLOSING_MESSAGE = '以上でまとめます。ありがとうございました。';
 
 type UseJournalChatReturn = {
   messages: Message[];
   isLoading: boolean;
   isError: boolean;
+  errorMessage: string | null;
+  isConversationComplete: boolean;
   sendUserMessage: (text: string) => Promise<void>;
   clearMessages: () => void;
 };
 
-async function pickBestJapaneseFemaleVoice(): Promise<string | undefined> {
-  try {
-    const voices = await Speech.getAvailableVoicesAsync();
-    const jaVoices = voices.filter(v => v.language.startsWith('ja'));
-
-    // 優先順: Enhanced（premium）> compact > その他
-    const priority = ['enhanced', 'premium'];
-    for (const keyword of priority) {
-      const match = jaVoices.find(v =>
-        v.identifier.toLowerCase().includes(keyword) ||
-        v.quality?.toLowerCase().includes(keyword)
-      );
-      if (match) return match.identifier;
-    }
-
-    // Kyoko（女性）を優先
-    const kyoko = jaVoices.find(v => v.identifier.toLowerCase().includes('kyoko'));
-    if (kyoko) return kyoko.identifier;
-
-    return jaVoices[0]?.identifier;
-  } catch {
-    return undefined;
-  }
-}
-
 export function useJournalChat(): UseJournalChatReturn {
-  const [messages, setMessages] = useState<Message[]>([]);
+  const [messages, setMessages] = useState<Message[]>([
+    { role: 'model', text: INITIAL_MESSAGE },
+  ]);
   const [isLoading, setIsLoading] = useState(false);
   const [isError, setIsError] = useState(false);
-  const voiceRef = useRef<string | undefined>(undefined);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [isConversationComplete, setIsConversationComplete] = useState(false);
 
-  useEffect(() => {
-    pickBestJapaneseFemaleVoice().then(v => { voiceRef.current = v; });
-  }, []);
-
-  const speakReply = useCallback((text: string) => {
+  const speak = useCallback((text: string, onDone?: () => void) => {
     Speech.stop();
-    Speech.speak(text, {
-      language: 'ja-JP',
-      voice: voiceRef.current,
-      rate: 0.45,
-      pitch: 1.1,
-    });
+    Speech.speak(text, { language: 'ja-JP', volume: 1.0, onDone });
   }, []);
 
   const sendUserMessage = useCallback(async (text: string) => {
     const userMessage: Message = { role: 'user', text };
     const nextMessages = [...messages, userMessage];
 
-    setMessages(nextMessages);
+    setMessages([...nextMessages, { role: 'model', text: '' }]);
     setIsLoading(true);
     setIsError(false);
+    setErrorMessage(null);
 
     try {
-      const reply = await sendMessage(nextMessages);
-      const aiMessage: Message = { role: 'model', text: reply };
-      setMessages([...nextMessages, aiMessage]);
-      speakReply(reply);
-    } catch {
+      let accumulated = '';
+      const currentRallies = messages.filter(m => m.role === 'user').length;
+      const isLastRally = currentRallies + 1 >= MAX_RALLIES;
+
+      for await (const chunk of sendMessageStream(nextMessages, isLastRally)) {
+        accumulated += chunk;
+        const displayText = accumulated.replace(END_MARKER, '').trimEnd();
+        setMessages([...nextMessages, { role: 'model', text: displayText }]);
+      }
+
+      const hasEndMarker = accumulated.includes(END_MARKER);
+      const cleanText = accumulated.replace(END_MARKER, '').trim();
+      const finalMessages = [...nextMessages, { role: 'model', text: cleanText }];
+      const rallyCount = finalMessages.filter(m => m.role === 'user').length;
+
+      if (hasEndMarker) {
+        // AI が自然に締めくくった → そのまま読み上げて遷移
+        setMessages(finalMessages);
+        speak(cleanText, () => setIsConversationComplete(true));
+      } else if (rallyCount >= MAX_RALLIES) {
+        // 上限到達で AI が [END] を付けなかった → そのまま読み上げて遷移
+        setMessages(finalMessages);
+        speak(cleanText, () => setIsConversationComplete(true));
+      } else {
+        setMessages(finalMessages);
+        speak(cleanText);
+      }
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      console.error('[useJournalChat] sendMessage failed:', msg);
       setIsError(true);
+      setErrorMessage(msg);
     } finally {
       setIsLoading(false);
     }
-  }, [messages, speakReply]);
+  }, [messages, speak]);
 
   const clearMessages = useCallback(() => {
-    setMessages([]);
+    setMessages([{ role: 'model', text: INITIAL_MESSAGE }]);
     setIsError(false);
+    setErrorMessage(null);
+    setIsConversationComplete(false);
     Speech.stop();
   }, []);
 
-  return { messages, isLoading, isError, sendUserMessage, clearMessages };
+  return { messages, isLoading, isError, errorMessage, isConversationComplete, sendUserMessage, clearMessages };
 }

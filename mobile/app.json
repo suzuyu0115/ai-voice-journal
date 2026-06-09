@@ -12,7 +12,7 @@
       "infoPlist": {
         "NSMicrophoneUsageDescription": "日記を録音するためにマイクを使用します。"
       },
-      "bundleIdentifier": "com.anonymous.ai-voice-journal"
+      "bundleIdentifier": "com.suzuyu0115.aivoicejournal"
     },
     "android": {
       "adaptiveIcon": {
@@ -36,12 +36,6 @@
     "plugins": [
       "expo-router",
       "expo-sqlite",
-      [
-        "expo-notifications",
-        {
-          "sounds": []
-        }
-      ],
       [
         "expo-speech-recognition",
         {
