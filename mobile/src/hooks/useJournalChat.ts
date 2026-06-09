@@ -5,9 +5,9 @@ import type { Message } from '../lib/gemini';
 
 export const MAX_RALLIES = 3;
 const END_MARKER = '[END]';
-export const INITIAL_MESSAGE = 'こんにちは！今日はどんなことがありましたか？';
+export const INITIAL_MESSAGE = 'こんにちは！今日はどんな一日でしたか？出来事や感じたことを詳しく聞かせてください。';
 export const CLOSING_MESSAGE = '以上でまとめます。ありがとうございました。';
-const TRANSITION_SUFFIX = 'では日記を作成しますね。おつかれさまでした。';
+const TRANSITION_SUFFIX = 'では、話してもらった内容をもとに日記を作成しますね。ありがとうございました。';
 
 type UseJournalChatReturn = {
   messages: Message[];

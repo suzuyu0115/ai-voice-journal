@@ -108,7 +108,7 @@ describe('useJournalChat', () => {
     const last = result.current.messages[result.current.messages.length - 1];
     expect(last.role).toBe('model');
     expect(last.text).toContain('お疲れさまでした。');
-    expect(last.text).toContain('では日記を作成しますね。おつかれさまでした。');
+    expect(last.text).toContain('では、話してもらった内容をもとに日記を作成しますね。ありがとうございました。');
   });
 
   it('[END] マーカーは表示テキストから除去される', async () => {
