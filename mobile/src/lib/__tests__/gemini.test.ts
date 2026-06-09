@@ -71,7 +71,8 @@ describe('sendMessageStream', () => {
       { role: 'user', text: '質問' },
       { role: 'model', text: '回答' },
     ];
-    for await (const _ of sendMessageStream(messages)) { /* consume */ }
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    for await (const _chunk of sendMessageStream(messages)) { /* consume */ }
     const calledWith = getMockGenerateContentStream().mock.calls[0][0];
     expect(calledWith.contents[0].role).toBe('user');
     expect(calledWith.contents[1].role).toBe('model');

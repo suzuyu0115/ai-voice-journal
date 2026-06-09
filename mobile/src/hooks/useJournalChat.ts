@@ -69,6 +69,7 @@ export function useJournalChat(): UseJournalChatReturn {
       }
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
+      // eslint-disable-next-line no-console
       console.error('[useJournalChat] sendMessage failed:', msg);
       setIsError(true);
       setErrorMessage(msg);

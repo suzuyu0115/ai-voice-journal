@@ -30,6 +30,7 @@ export default function ConversationScreen() {
   useEffect(() => {
     if (!isRecording && waitingForTranscriptRef.current) {
       waitingForTranscriptRef.current = false;
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       if (transcript) setTextInput(transcript);
     }
   }, [isRecording, transcript]);

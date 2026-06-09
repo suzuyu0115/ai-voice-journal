@@ -1,6 +1,6 @@
 import React from 'react';
 import { create, act } from 'react-test-renderer';
-import { useJournalChat, MAX_RALLIES, INITIAL_MESSAGE, CLOSING_MESSAGE } from '../useJournalChat';
+import { useJournalChat, MAX_RALLIES, INITIAL_MESSAGE } from '../useJournalChat';
 
 import { sendMessageStream } from '../../lib/gemini';
 import * as Speech from 'expo-speech';
