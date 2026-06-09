@@ -7,6 +7,7 @@ export const MAX_RALLIES = 3;
 const END_MARKER = '[END]';
 export const INITIAL_MESSAGE = 'こんにちは！今日はどんなことがありましたか？';
 export const CLOSING_MESSAGE = '以上でまとめます。ありがとうございました。';
+const TRANSITION_SUFFIX = 'では日記を作成しますね。おつかれさまでした。';
 
 type UseJournalChatReturn = {
   messages: Message[];
@@ -57,14 +58,11 @@ export function useJournalChat(): UseJournalChatReturn {
       const finalMessages = [...nextMessages, { role: 'model', text: cleanText }];
       const rallyCount = finalMessages.filter(m => m.role === 'user').length;
 
-      if (hasEndMarker) {
-        // AI が自然に締めくくった → そのまま読み上げて遷移
-        setMessages(finalMessages);
-        speak(cleanText, () => setIsConversationComplete(true));
-      } else if (rallyCount >= MAX_RALLIES) {
-        // 上限到達で AI が [END] を付けなかった → そのまま読み上げて遷移
-        setMessages(finalMessages);
-        speak(cleanText, () => setIsConversationComplete(true));
+      if (hasEndMarker || rallyCount >= MAX_RALLIES) {
+        const fullText = cleanText + '\n\n' + TRANSITION_SUFFIX;
+        const endingMessages = [...nextMessages, { role: 'model' as const, text: fullText }];
+        setMessages(endingMessages);
+        speak(fullText, () => setIsConversationComplete(true));
       } else {
         setMessages(finalMessages);
         speak(cleanText);

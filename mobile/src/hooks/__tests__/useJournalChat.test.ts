@@ -100,21 +100,23 @@ describe('useJournalChat', () => {
     expect(mockStop).toHaveBeenCalled();
   });
 
-  it('[END] マーカーで isConversationComplete が true になり CLOSING_MESSAGE は追加されない', async () => {
+  it('[END] マーカーで isConversationComplete が true になり TRANSITION_SUFFIX が末尾に付く', async () => {
     mockSendMessageStream.mockImplementation(() => makeStream('お疲れさまでした。[END]'));
     const { result } = renderJournalChatHook();
     await act(async () => { await result.current.sendUserMessage('今日は疲れた'); });
     expect(result.current.isConversationComplete).toBe(true);
     const last = result.current.messages[result.current.messages.length - 1];
-    expect(last).toEqual({ role: 'model', text: 'お疲れさまでした。' });
+    expect(last.role).toBe('model');
+    expect(last.text).toContain('お疲れさまでした。');
+    expect(last.text).toContain('では日記を作成しますね。おつかれさまでした。');
   });
 
   it('[END] マーカーは表示テキストから除去される', async () => {
     mockSendMessageStream.mockImplementation(() => makeStream('お疲れさまでした。[END]'));
     const { result } = renderJournalChatHook();
     await act(async () => { await result.current.sendUserMessage('今日は疲れた'); });
-    const aiMessage = result.current.messages.find(m => m.text === 'お疲れさまでした。');
-    expect(aiMessage).toBeDefined();
+    const lastMsg = result.current.messages[result.current.messages.length - 1];
+    expect(lastMsg.text).not.toContain('[END]');
   });
 
   it(`最終ラリーで [END] なしの場合 AI 返答をそのまま表示して isConversationComplete が true`, async () => {
