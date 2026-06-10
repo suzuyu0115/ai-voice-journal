@@ -63,6 +63,70 @@ AIと音声で会話しながら内省を深める日記アプリ。
 
 ---
 
+## セットアップ
+
+### 必要なもの
+
+- macOS + Xcode（実機ビルドに必須）
+- Node.js 18 以上
+- Apple ID（無料の個人開発者アカウントで OK）
+- iOS デバイス（音声認識は Simulator 非対応）
+
+### 初回セットアップ
+
+```bash
+cd mobile
+cp .env.example .env   # APIキーを記入（下記参照）
+npm install
+npx expo prebuild --platform ios --clean
+npx expo run:ios --device
+```
+
+### 環境変数（mobile/.env）
+
+```
+EXPO_PUBLIC_GEMINI_API_KEY=your_key
+EXPO_PUBLIC_SUPABASE_URL=your_url
+EXPO_PUBLIC_SUPABASE_ANON_KEY=your_key
+```
+
+### 実機への初回インストール手順
+
+1. **iPhone のデベロッパーモードを有効化**
+   - 設定 → プライバシーとセキュリティ → デベロッパーモード → ON → 再起動
+
+2. **Xcode で署名設定**
+   - `open mobile/ios/AIVoiceJournal.xcworkspace`
+   - 左サイドバーの `AIVoiceJournal`（青アイコン）をクリック
+   - `TARGETS → AIVoiceJournal → Signing & Capabilities`
+   - Team に自分の Apple ID を設定（Xcode → Settings → Accounts で追加）
+
+3. **ビルド & インストール**
+   ```bash
+   npx expo run:ios --device
+   ```
+   または Xcode の ▶ Run ボタンを押す
+
+4. **証明書の信頼（初回のみ）**
+   - iPhone の 設定 → 一般 → VPN とデバイス管理
+   - `Apple Development: ...` をタップ → 「信頼する」
+
+### 日常の開発フロー
+
+```bash
+# Metro サーバーを起動（コード変更が即リロードされる）
+cd mobile
+npx expo start
+```
+
+- JS/TS のコード変更はファイル保存で自動リロード（再ビルド不要）
+- 新しいネイティブパッケージ追加時や `app.json` 変更時は再ビルドが必要：
+  ```bash
+  npx expo run:ios --device
+  ```
+
+---
+
 ## 機能一覧
 
 ### MVP（〜2026-06-19）
@@ -132,71 +196,15 @@ ai-voice-journal/
 │   │   │   └── journalStore.ts      # Zustand
 │   │   └── components/
 │   │       ├── RecordButton.tsx
-│   │       ├── ChatBubble.tsx
-│   │       └── WaveformAnimation.tsx
+│   │       └── ChatBubble.tsx
 │   └── .env                         # 環境変数（Git 管理外）
 └── api/                             # バックエンド（MVP では不使用）
 ```
 
 ---
 
-## セットアップ
+## GitHub
 
-### 必要なもの
-
-- macOS + Xcode（実機ビルドに必須）
-- Node.js 18 以上
-- Apple ID（無料の個人開発者アカウントで OK）
-- iOS デバイス（音声認識は Simulator 非対応）
-
-### 初回セットアップ
-
-```bash
-cd mobile
-cp .env.example .env   # APIキーを記入（下記参照）
-npm install
-npx expo prebuild --platform ios --clean
-npx expo run:ios --device
-```
-
-### 環境変数（mobile/.env）
-
-```
-EXPO_PUBLIC_GEMINI_API_KEY=your_key
-EXPO_PUBLIC_SUPABASE_URL=your_url
-EXPO_PUBLIC_SUPABASE_ANON_KEY=your_key
-```
-
-### 実機への初回インストール手順
-
-1. **iPhone のデベロッパーモードを有効化**
-   - 設定 → プライバシーとセキュリティ → デベロッパーモード → ON → 再起動
-
-2. **Xcode で署名設定**
-   - `open mobile/ios/AIVoiceJournal.xcworkspace`
-   - 左サイドバーの `AIVoiceJournal`（青アイコン）をクリック
-   - `TARGETS → AIVoiceJournal → Signing & Capabilities`
-   - Team に自分の Apple ID を設定（Xcode → Settings → Accounts で追加）
-
-3. **ビルド & インストール**
-   ```bash
-   npx expo run:ios --device
-   ```
-
-4. **証明書の信頼（初回のみ）**
-   - iPhone の 設定 → 一般 → VPN とデバイス管理
-   - `Apple Development: ...` をタップ → 「信頼する」
-
-### 日常の開発フロー
-
-```bash
-# Metro サーバーを起動（コード変更が即リロードされる）
-cd mobile
-npx expo start
-```
-
-- JS/TS のコード変更はファイル保存で自動リロード（再ビルド不要）
-- 新しいネイティブパッケージ追加時や `app.json` 変更時は再ビルドが必要：
-  ```bash
-  npx expo run:ios --device
-  ```
+- リポジトリ: https://github.com/suzuyu0115/ai-voice-journal
+- Project（カンバン）: https://github.com/users/suzuyu0115/projects/6
+- Issues: https://github.com/suzuyu0115/ai-voice-journal/issues
