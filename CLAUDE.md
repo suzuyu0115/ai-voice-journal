@@ -23,6 +23,7 @@ ai-voice-journal/
 | 状態管理 | Zustand |
 | DB / Auth | Supabase |
 | ナビゲーション | expo-router + `@expo/vector-icons`（タブアイコン）|
+| カレンダー | `react-native-calendars` |
 
 ## 主要コマンド
 
@@ -48,7 +49,7 @@ EXPO_PUBLIC_SUPABASE_ANON_KEY=
 |---------|------|
 | `app/(tabs)/index.tsx` | ホーム（日記一覧） |
 | `app/(tabs)/conversation.tsx` | 会話（メイン機能） |
-| `app/(tabs)/calendar.tsx` | カレンダー（感情ヒートマップ）|
+| `app/(tabs)/calendar.tsx` | カレンダー（月間カレンダー・日記プレビュー）|
 | `app/(tabs)/settings.tsx` | 設定 |
 | `app/summary/[id].tsx` | サマリー（保存・確認、タブ外フルスクリーン） |
 
@@ -87,7 +88,7 @@ app/
 
 ```
 mobile/src/
-├── hooks/       # useVoiceRecorder.ts, useJournalChat.ts
+├── hooks/       # useVoiceRecorder.ts, useJournalChat.ts, useCalendarEntries.ts
 ├── lib/         # gemini.ts, supabase.ts（APIクライアント）
 ├── store/       # journalStore.ts（Zustand）
 └── components/  # RecordButton, ChatBubble, WaveformAnimation
@@ -168,21 +169,23 @@ gh pr create \
 
 ---
 
-## 現在の実装状況（2026-06-09時点）
+## 現在の実装状況（2026-06-11時点）
 
 ### 完了済み
 - Expo SDK 56 プロジェクト作成（`mobile/`）
-- 全パッケージインストール済み: expo-router, expo-sqlite, expo-av, expo-haptics, async-storage, zustand, @google/genai, expo-speech, expo-speech-recognition, @supabase/supabase-js, @expo/vector-icons
+- 全パッケージインストール済み: expo-router, expo-sqlite, expo-av, expo-haptics, async-storage, zustand, @google/genai, expo-speech, expo-speech-recognition, @supabase/supabase-js, @expo/vector-icons, react-native-calendars
 - app.json 設定済み（scheme, マイク権限, expo-speech-recognition plugin）
 - GitHub リポジトリ作成・push済み
 - `src/lib/gemini.ts`・`src/lib/supabase.ts`・`src/store/journalStore.ts` 作成済み
 - **#19** フッターナビゲーションバー（4タブ: ホーム・会話・カレンダー・設定）
 - **#16** 会話機能フル実装（STT・Gemini ストリーミング・TTS・3ラリー終了・[END]検知）
+- **#21** カレンダー画面実装（月間カレンダー・日記エントリープレビュー）
 
 ### コードの状態
 - `app/(tabs)/` 配下に4画面（index, conversation, calendar, settings）
 - `app/summary/[id].tsx` スケルトン（#8 で実装予定）
 - `src/hooks/useVoiceRecorder.ts`・`src/hooks/useJournalChat.ts` 実装済み
+- `src/hooks/useCalendarEntries.ts` 実装済み（月別エントリー取得・日付グループ化）
 - `src/components/RecordButton.tsx`・`src/components/ChatBubble.tsx` 実装済み
 - 実機ビルド確認済み（bundleIdentifier: com.suzuyu0115.aivoicejournal、Personal Team 署名）
 
@@ -213,10 +216,10 @@ gh pr create \
 | #9 | 日記一覧・Supabase保存・ストリーク | feature | 未着手 |
 | #16 | 会話機能フル実装（STT・Gemini・TTS・UI）| feature | 完了 |
 | #19 | フッターナビゲーションバー実装 | feature | 完了 |
+| #21 | カレンダー画面実装（GitHub草スタイル→日記プレビュー）| feature | 完了 |
 
 ## 推奨着手順序
 
-1. ~~#1〜#7, #16, #19~~ 完了済み
+1. ~~#1〜#7, #16, #19, #21~~ 完了済み
 2. **#8** サマリー生成・感情スコア
 3. **#9** 日記一覧・Supabase 保存・ストリーク
-5. **#19** フッターナビゲーション PR マージ
