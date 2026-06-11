@@ -23,26 +23,29 @@ export function useSummary(): UseSummaryReturn {
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const generate = useCallback(async () => {
-    if (!pendingMessages.length) return;
-    setIsGenerating(true);
-    setError(null);
-    try {
-      const { title: t, body: b } = await generateSummary(pendingMessages);
-      setTitle(t);
-      setBody(b);
-    } catch (e) {
-      setError(friendlyError(e));
-    } finally {
-      setIsGenerating(false);
-    }
-  }, [pendingMessages]); // eslint-disable-line react-hooks/exhaustive-deps
-
+  // Initial generation: setState only in callbacks, not synchronously in effect body
   useEffect(() => {
-    generate();
+    if (!pendingMessages.length) return;
+    generateSummary(pendingMessages)
+      .then(({ title: t, body: b }) => {
+        setTitle(t);
+        setBody(b);
+      })
+      .catch((e) => setError(friendlyError(e)))
+      .finally(() => setIsGenerating(false));
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const retry = useCallback(() => generate(), [generate]);
+  const retry = useCallback(() => {
+    setIsGenerating(true);
+    setError(null);
+    generateSummary(pendingMessages)
+      .then(({ title: t, body: b }) => {
+        setTitle(t);
+        setBody(b);
+      })
+      .catch((e) => setError(friendlyError(e)))
+      .finally(() => setIsGenerating(false));
+  }, [pendingMessages]);
 
   const saveEntry = async (): Promise<string | null> => {
     setIsSaving(true);
@@ -76,20 +79,25 @@ export function useSummary(): UseSummaryReturn {
   return { title, body, setTitle, setBody, isGenerating, isSaving, error, saveEntry, retry };
 }
 
-function friendlyError(e: unknown): string {
-  // Supabase errors are plain objects with a message property, not Error instances
-  const raw = e instanceof Error
-    ? e.message
-    : (e !== null && typeof e === 'object' && 'message' in e && typeof (e as { message: unknown }).message === 'string')
-      ? (e as { message: string }).message
-      : String(e);
+export function friendlyError(e: unknown): string {
+  let raw: string;
+  if (e instanceof Error) {
+    raw = e.message;
+  } else if (e !== null && typeof e === 'object' && typeof (e as Record<string, unknown>).message === 'string') {
+    raw = (e as { message: string }).message;
+  } else {
+    raw = String(e);
+  }
   try {
     const parsed = JSON.parse(raw);
-    const code = parsed?.error?.code;
-    if (code === 503) return 'AIサーバーが混み合っています。しばらく待ってから再試行してください。';
-    if (parsed?.error?.message) return parsed.error.message;
+    if (parsed?.error?.code === 503) {
+      return 'AIサーバーが混み合っています。しばらく待ってから再試行してください。';
+    }
+    if (typeof parsed?.error?.message === 'string') {
+      return parsed.error.message;
+    }
   } catch {
-    // not JSON
+    // not JSON, return as-is
   }
   return raw;
 }

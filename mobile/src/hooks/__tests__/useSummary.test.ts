@@ -1,6 +1,6 @@
 import React from 'react';
 import { create, act } from 'react-test-renderer';
-import { useSummary } from '../useSummary';
+import { useSummary, friendlyError } from '../useSummary';
 import { generateSummary } from '../../lib/gemini';
 import { insertDiaryEntry } from '../../lib/supabase';
 import { useJournalStore } from '../../store/journalStore';
@@ -144,6 +144,21 @@ describe('useSummary', () => {
     expect(result.current.error).toBe('AIサーバーが混み合っています。しばらく待ってから再試行してください。');
   });
 
+  it('saveEntry が plain object エラー（Supabase形式）を投げた場合、message を表示する', async () => {
+    useJournalStore.setState({ pendingMessages });
+    mockGenerateSummary.mockResolvedValue({ title: 'テストタイトル', body: 'テスト本文' });
+    mockInsertDiaryEntry.mockRejectedValue({ message: 'row violates policy', code: '42501' });
+
+    const { result } = renderSummaryHook();
+    await act(async () => {});
+
+    let id: string | null = 'initial';
+    await act(async () => { id = await result.current.saveEntry(); });
+
+    expect(id).toBeNull();
+    expect(result.current.error).toBe('row violates policy');
+  });
+
   it('saveEntry がエラーを返した場合、null を返し error に格納される', async () => {
     useJournalStore.setState({ pendingMessages });
     mockGenerateSummary.mockResolvedValue({ title: 'テストタイトル', body: 'テスト本文' });
@@ -157,5 +172,34 @@ describe('useSummary', () => {
 
     expect(id).toBeNull();
     expect(result.current.error).toBe('DB error');
+  });
+});
+
+describe('friendlyError', () => {
+  it('Error インスタンスは message を返す', () => {
+    expect(friendlyError(new Error('test'))).toBe('test');
+  });
+
+  it('plain object は message プロパティを返す', () => {
+    expect(friendlyError({ message: 'supabase error' })).toBe('supabase error');
+  });
+
+  it('非オブジェクトは String() で変換する', () => {
+    expect(friendlyError(42)).toBe('42');
+    expect(friendlyError(null)).toBe('null');
+  });
+
+  it('JSON の error.message を返す（503以外）', () => {
+    const raw = JSON.stringify({ error: { code: 400, message: 'Bad Request' } });
+    expect(friendlyError(new Error(raw))).toBe('Bad Request');
+  });
+
+  it('503 エラーは日本語メッセージに変換する', () => {
+    const raw = JSON.stringify({ error: { code: 503, message: 'unavailable' } });
+    expect(friendlyError(new Error(raw))).toBe('AIサーバーが混み合っています。しばらく待ってから再試行してください。');
+  });
+
+  it('JSON でない文字列はそのまま返す', () => {
+    expect(friendlyError(new Error('plain error'))).toBe('plain error');
   });
 });
