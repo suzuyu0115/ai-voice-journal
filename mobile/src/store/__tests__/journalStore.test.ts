@@ -1,7 +1,7 @@
 import { useJournalStore } from '../journalStore';
 
 beforeEach(() => {
-  useJournalStore.setState({ messages: [], entries: [] });
+  useJournalStore.setState({ messages: [], pendingMessages: [], entries: [] });
 });
 
 describe('journalStore', () => {
@@ -30,6 +30,20 @@ describe('journalStore', () => {
       useJournalStore.getState().addMessage({ role: 'user', text: 'メッセージ' });
       useJournalStore.getState().clearMessages();
       expect(useJournalStore.getState().messages).toHaveLength(0);
+    });
+  });
+
+  describe('setPendingMessages', () => {
+    it('pendingMessages を設定できる', () => {
+      const msgs = [{ role: 'user' as const, text: '今日はよかった' }];
+      useJournalStore.getState().setPendingMessages(msgs);
+      expect(useJournalStore.getState().pendingMessages).toEqual(msgs);
+    });
+
+    it('空配列で pendingMessages をクリアできる', () => {
+      useJournalStore.getState().setPendingMessages([{ role: 'user', text: 'テスト' }]);
+      useJournalStore.getState().setPendingMessages([]);
+      expect(useJournalStore.getState().pendingMessages).toHaveLength(0);
     });
   });
 

@@ -6,7 +6,7 @@ export type DiaryEntry = {
   created_at: string;
   conversation_log: { role: 'user' | 'assistant'; text: string }[];
   diary_text: string;
-  emotion_score: { positive: number; negative: number; neutral: number } | null;
+  emotion_score: { score: number } | null;
   tags: string[];
 };
 
@@ -22,7 +22,7 @@ export type Database = {
   };
 };
 
-export const supabase = createClient<Database>(
+export const supabase = createClient(
   process.env.EXPO_PUBLIC_SUPABASE_URL!,
   process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY!,
   {
@@ -34,3 +34,15 @@ export const supabase = createClient<Database>(
     },
   }
 );
+
+export async function insertDiaryEntry(
+  entry: Omit<DiaryEntry, 'id' | 'created_at'>
+): Promise<DiaryEntry> {
+  const { data, error } = await supabase
+    .from('diary_entries')
+    .insert(entry)
+    .select()
+    .single();
+  if (error) throw error;
+  return data as DiaryEntry;
+}
