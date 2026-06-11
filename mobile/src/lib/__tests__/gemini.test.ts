@@ -80,20 +80,20 @@ describe('sendMessageStream', () => {
 });
 
 describe('generateSummary', () => {
-  it('要約と感情スコアを返す', async () => {
+  it('タイトルと本文を返す', async () => {
     getMockGenerateContent().mockResolvedValue({
-      text: JSON.stringify({ summary: '今日はよい一日でした', emotionScore: 8 }),
+      text: JSON.stringify({ title: '充実した一日', body: '今日は楽しかった。' }),
     });
     const messages: Message[] = [{ role: 'user', text: '今日は楽しかった' }];
     const result = await generateSummary(messages);
-    expect(result.summary).toBe('今日はよい一日でした');
-    expect(result.emotionScore).toBe(8);
+    expect(result.title).toBe('充実した一日');
+    expect(result.body).toBe('今日は楽しかった。');
   });
 
   it('不正なJSONの場合はデフォルト値を返す', async () => {
     getMockGenerateContent().mockResolvedValue({ text: '{}' });
     const result = await generateSummary([{ role: 'user', text: 'テスト' }]);
-    expect(result.summary).toBe('');
-    expect(result.emotionScore).toBe(5);
+    expect(result.title).toBe('');
+    expect(result.body).toBe('');
   });
 });

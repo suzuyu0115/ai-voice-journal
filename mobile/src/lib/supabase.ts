@@ -4,9 +4,9 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 export type DiaryEntry = {
   id: string;
   created_at: string;
+  title: string;
   conversation_log: { role: 'user' | 'assistant'; text: string }[];
   diary_text: string;
-  emotion_score: { score: number } | null;
   tags: string[];
 };
 

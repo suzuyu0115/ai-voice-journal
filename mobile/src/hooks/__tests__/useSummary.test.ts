@@ -56,7 +56,7 @@ describe('useSummary', () => {
 
   it('pendingMessages がある場合、マウント時に generateSummary を呼ぶ', async () => {
     useJournalStore.setState({ pendingMessages });
-    mockGenerateSummary.mockResolvedValue({ summary: 'テスト要約', emotionScore: 7 });
+    mockGenerateSummary.mockResolvedValue({ title: 'テストタイトル', body: 'テスト本文' });
 
     const { result } = renderSummaryHook();
     await act(async () => {});
@@ -65,15 +65,15 @@ describe('useSummary', () => {
     expect(result.current.isGenerating).toBe(false);
   });
 
-  it('generateSummary の結果が summary と emotionScore に反映される', async () => {
+  it('generateSummary の結果が title と body に反映される', async () => {
     useJournalStore.setState({ pendingMessages });
-    mockGenerateSummary.mockResolvedValue({ summary: 'テスト要約', emotionScore: 8 });
+    mockGenerateSummary.mockResolvedValue({ title: '充実した一日', body: '仕事が大変だったが乗り越えた。' });
 
     const { result } = renderSummaryHook();
     await act(async () => {});
 
-    expect(result.current.summary).toBe('テスト要約');
-    expect(result.current.emotionScore).toBe(8);
+    expect(result.current.title).toBe('充実した一日');
+    expect(result.current.body).toBe('仕事が大変だったが乗り越えた。');
   });
 
   it('generateSummary がエラーを投げた場合、error に格納される', async () => {
@@ -89,7 +89,7 @@ describe('useSummary', () => {
 
   it('saveEntry が insertDiaryEntry を呼び ID を返す', async () => {
     useJournalStore.setState({ pendingMessages });
-    mockGenerateSummary.mockResolvedValue({ summary: 'テスト要約', emotionScore: 7 });
+    mockGenerateSummary.mockResolvedValue({ title: 'テストタイトル', body: 'テスト本文' });
     mockInsertDiaryEntry.mockResolvedValue({ id: 'abc123', created_at: '2026-06-09T00:00:00Z' });
 
     const { result } = renderSummaryHook();
@@ -104,7 +104,7 @@ describe('useSummary', () => {
 
   it('saveEntry 成功後、ストアの entries に追加される', async () => {
     useJournalStore.setState({ pendingMessages });
-    mockGenerateSummary.mockResolvedValue({ summary: 'テスト要約', emotionScore: 7 });
+    mockGenerateSummary.mockResolvedValue({ title: 'テストタイトル', body: 'テスト本文' });
     mockInsertDiaryEntry.mockResolvedValue({ id: 'abc123', created_at: '2026-06-09T00:00:00Z' });
 
     const { result } = renderSummaryHook();
@@ -113,12 +113,40 @@ describe('useSummary', () => {
 
     const { entries } = useJournalStore.getState();
     expect(entries).toHaveLength(1);
-    expect(entries[0]).toMatchObject({ id: 'abc123', summary: 'テスト要約', emotionScore: 7 });
+    expect(entries[0]).toMatchObject({ id: 'abc123', title: 'テストタイトル', body: 'テスト本文' });
+  });
+
+  it('retry を呼ぶと generateSummary が再度呼ばれ error がクリアされる', async () => {
+    useJournalStore.setState({ pendingMessages });
+    mockGenerateSummary.mockRejectedValueOnce(new Error('API error'));
+    mockGenerateSummary.mockResolvedValue({ title: '再試行タイトル', body: '再試行本文' });
+
+    const { result } = renderSummaryHook();
+    await act(async () => {});
+    expect(result.current.error).toBe('API error');
+
+    await act(async () => { result.current.retry(); });
+    await act(async () => {});
+
+    expect(mockGenerateSummary).toHaveBeenCalledTimes(2);
+    expect(result.current.error).toBeNull();
+    expect(result.current.title).toBe('再試行タイトル');
+  });
+
+  it('503エラーの場合、日本語のメッセージに変換される', async () => {
+    useJournalStore.setState({ pendingMessages });
+    const err503 = new Error('{"error":{"code":503,"message":"high demand","status":"UNAVAILABLE"}}');
+    mockGenerateSummary.mockRejectedValue(err503);
+
+    const { result } = renderSummaryHook();
+    await act(async () => {});
+
+    expect(result.current.error).toBe('AIサーバーが混み合っています。しばらく待ってから再試行してください。');
   });
 
   it('saveEntry がエラーを返した場合、null を返し error に格納される', async () => {
     useJournalStore.setState({ pendingMessages });
-    mockGenerateSummary.mockResolvedValue({ summary: 'テスト要約', emotionScore: 7 });
+    mockGenerateSummary.mockResolvedValue({ title: 'テストタイトル', body: 'テスト本文' });
     mockInsertDiaryEntry.mockRejectedValue(new Error('DB error'));
 
     const { result } = renderSummaryHook();

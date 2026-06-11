@@ -26,7 +26,7 @@ export default function ConversationScreen() {
   useEffect(() => {
     if (isConversationComplete) {
       setPendingMessages(messages);
-      router.push('/summary/new');
+      router.replace('/summary/new');
     }
   }, [isConversationComplete, router, messages, setPendingMessages]);
 

@@ -3,8 +3,8 @@ import type { Message } from '../lib/gemini';
 
 export type JournalEntry = {
   id: string;
-  summary: string;
-  emotionScore: number;
+  title: string;
+  body: string;
   createdAt: string;
 };
 

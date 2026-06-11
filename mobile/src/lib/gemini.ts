@@ -48,7 +48,7 @@ export async function* sendMessageStream(
   }
 }
 
-export async function generateSummary(messages: Message[]): Promise<{ summary: string; emotionScore: number }> {
+export async function generateSummary(messages: Message[]): Promise<{ title: string; body: string }> {
   const conversation = messages.map((m) => `${m.role === 'user' ? 'ユーザー' : 'AI'}: ${m.text}`).join('\n');
 
   const response = await ai.models.generateContent({
@@ -58,8 +58,8 @@ export async function generateSummary(messages: Message[]): Promise<{ summary: s
         role: 'user',
         parts: [
           {
-            text: `以下の会話を日記としてまとめ、JSONで返してください。
-フォーマット: {"summary": "日記の要約（200字以内）", "emotionScore": 感情スコア（1〜10の整数、10が最もポジティブ）}
+            text: `以下の会話をもとに日記を作成し、JSONで返してください。
+フォーマット: {"title": "日記のタイトル（20字以内）", "body": "日記の本文（400字以内、ユーザーの一人称視点で自然な文体で）"}
 
 会話:
 ${conversation}`,
@@ -71,5 +71,5 @@ ${conversation}`,
   });
 
   const parsed = JSON.parse(response.text ?? '{}');
-  return { summary: parsed.summary ?? '', emotionScore: parsed.emotionScore ?? 5 };
+  return { title: parsed.title ?? '', body: parsed.body ?? '' };
 }
