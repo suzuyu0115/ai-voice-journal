@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
 
 export type CalendarEntry = {
@@ -13,6 +13,9 @@ export function useCalendarEntries(month: string) {
   const [entriesByDate, setEntriesByDate] = useState<EntriesByDate>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
+  const [refreshKey, setRefreshKey] = useState(0);
+
+  const refetch = useCallback(() => setRefreshKey((k) => k + 1), []);
 
   useEffect(() => {
     const [year, monthNum] = month.split('-').map(Number);
@@ -51,7 +54,7 @@ export function useCalendarEntries(month: string) {
     return () => {
       cancelled = true;
     };
-  }, [month]);
+  }, [month, refreshKey]);
 
-  return { entriesByDate, loading, error };
+  return { entriesByDate, loading, error, refetch };
 }
