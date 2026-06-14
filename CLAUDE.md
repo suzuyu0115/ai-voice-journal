@@ -178,16 +178,21 @@ gh pr create \
 - `src/lib/gemini.ts`・`src/lib/supabase.ts`・`src/store/journalStore.ts` 作成済み
 - **#19** フッターナビゲーションバー（4タブ: ホーム・会話・カレンダー・設定）
 - **#16** 会話機能フル実装（STT・Gemini ストリーミング・TTS・3ラリー終了・[END]検知）
+- **#8** サマリー画面実装（Gemini によるタイトル+本文生成・編集モード・Supabase 保存・会話履歴表示）
+- **#21** カレンダー画面実装（月間カレンダー・日記エントリープレビュー）
+- **#31** 設定画面実装（iOS Settings スタイル UI・アプリバージョン表示・各機能プレースホルダー）
 
 ### コードの状態
-- `app/(tabs)/` 配下に4画面（index, conversation, calendar, settings）
-- `app/summary/[id].tsx` スケルトン（#8 で実装予定）
-- `src/hooks/useVoiceRecorder.ts`・`src/hooks/useJournalChat.ts` 実装済み
-- `src/components/RecordButton.tsx`・`src/components/ChatBubble.tsx` 実装済み
+- `app/(tabs)/` 配下に4画面（index, conversation, calendar, settings）。settings は iOS Settings スタイルで実装済み（バージョン表示・通知・AI設定・データ削除の4セクション）
+- `app/summary/[id].tsx` 実装済み（表示/編集トグル、BottomTabBar 手動マウント、会話履歴トグル）
+- `src/hooks/useVoiceRecorder.ts`・`src/hooks/useJournalChat.ts`・`src/hooks/useSummary.ts`・`src/hooks/useCalendarEntries.ts` 実装済み
+- `src/components/RecordButton.tsx`・`src/components/ChatBubble.tsx`・`src/components/BottomTabBar.tsx` 実装済み
+- `src/lib/gemini.ts`: `generateSummary` 追加（`{ title, body }` を JSON で返す）
+- `src/lib/supabase.ts`: `DiaryEntry` 型（title カラムあり、emotion_score なし）、`insertDiaryEntry` ヘルパー実装済み
+- `src/store/journalStore.ts`: `JournalEntry { id, title, body, createdAt }`、`pendingMessages` state 追加済み
 - 実機ビルド確認済み（bundleIdentifier: com.suzuyu0115.aivoicejournal、Personal Team 署名）
 
 ### 次のステップ
-- **#8** サマリー生成・感情スコア
 - **#9** 日記一覧・Supabase 保存・ストリーク
 
 ---
@@ -213,10 +218,10 @@ gh pr create \
 | #9 | 日記一覧・Supabase保存・ストリーク | feature | 未着手 |
 | #16 | 会話機能フル実装（STT・Gemini・TTS・UI）| feature | 完了 |
 | #19 | フッターナビゲーションバー実装 | feature | 完了 |
+| #21 | カレンダー画面実装（GitHub草スタイル→日記プレビュー）| feature | 完了 |
+| #31 | 設定画面実装（iOS Settings スタイル UI）| feature | 完了 |
 
 ## 推奨着手順序
 
-1. ~~#1〜#7, #16, #19~~ 完了済み
-2. **#8** サマリー生成・感情スコア
-3. **#9** 日記一覧・Supabase 保存・ストリーク
-5. **#19** フッターナビゲーション PR マージ
+1. ~~#1〜#7, #16, #19, #8, #21, #31~~ 完了済み
+2. **#9** 日記一覧・Supabase 保存・ストリーク

@@ -1,124 +1,112 @@
-import { View, Text, StyleSheet, TouchableOpacity, Alert } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { useEffect, useState } from 'react';
-import { useRouter } from 'expo-router';
-import { supabase } from '../../src/lib/supabase';
+import { Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import Constants from 'expo-constants';
 
-const APP_VERSION = '1.0.0';
+type IoniconsName = React.ComponentProps<typeof Ionicons>['name'];
+
+const PRIMARY = '#4A90E2';
+const DESTRUCTIVE = '#e53e3e';
+const TEXT = '#1a1a1a';
+const SUB = '#888';
+
+function placeholder() {
+  Alert.alert('準備中', 'この機能は近日実装予定です。');
+}
+
+function SectionHeader({ title }: { title: string }) {
+  return <Text style={styles.sectionHeader}>{title}</Text>;
+}
+
+function Row({
+  icon,
+  label,
+  value,
+  onPress,
+  destructive,
+}: {
+  icon: IoniconsName;
+  label: string;
+  value?: string;
+  onPress?: () => void;
+  destructive?: boolean;
+}) {
+  return (
+    <TouchableOpacity style={styles.row} onPress={onPress} activeOpacity={0.7} disabled={!onPress}>
+      <Ionicons name={icon} size={20} color={destructive ? DESTRUCTIVE : PRIMARY} style={styles.rowIcon} />
+      <Text style={[styles.rowLabel, destructive && styles.destructiveLabel]}>{label}</Text>
+      {value !== undefined && <Text style={styles.rowValue}>{value}</Text>}
+      <Ionicons name="chevron-forward" size={16} color={SUB} />
+    </TouchableOpacity>
+  );
+}
 
 export default function SettingsScreen() {
-  const router = useRouter();
-  const [email, setEmail] = useState<string | null>(null);
-
-  useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => {
-      setEmail(data.session?.user.email ?? null);
-    });
-  }, []);
-
-  const handleLogout = () => {
-    Alert.alert('ログアウト', 'ログアウトしますか？', [
-      { text: 'キャンセル', style: 'cancel' },
-      {
-        text: 'ログアウト',
-        style: 'destructive',
-        onPress: async () => {
-          await supabase.auth.signOut();
-          router.replace('/');
-        },
-      },
-    ]);
-  };
+  const version = Constants.expoConfig?.version ?? '—';
 
   return (
-    <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
-      <Text style={styles.screenTitle}>設定</Text>
-
+    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+      <SectionHeader title="アプリについて" />
       <View style={styles.section}>
-        <Text style={styles.sectionLabel}>アカウント</Text>
-        <View style={styles.card}>
-          <View style={styles.row}>
-            <Text style={styles.rowLabel}>メールアドレス</Text>
-            <Text style={styles.rowValue} numberOfLines={1}>{email ?? '—'}</Text>
-          </View>
-          <View style={styles.divider} />
-          <TouchableOpacity style={styles.logoutRow} onPress={handleLogout}>
-            <Text style={styles.logoutText}>ログアウト</Text>
-          </TouchableOpacity>
-        </View>
+        <Row icon="information-circle-outline" label="バージョン" value={version} />
       </View>
 
+      <SectionHeader title="通知" />
       <View style={styles.section}>
-        <Text style={styles.sectionLabel}>アプリについて</Text>
-        <View style={styles.card}>
-          <View style={styles.row}>
-            <Text style={styles.rowLabel}>バージョン</Text>
-            <Text style={styles.rowValue}>{APP_VERSION}</Text>
-          </View>
-        </View>
+        <Row icon="notifications-outline" label="リマインダー通知" onPress={placeholder} />
       </View>
-    </SafeAreaView>
+
+      <SectionHeader title="AI 設定" />
+      <View style={styles.section}>
+        <Row icon="color-wand-outline" label="AI トーン" onPress={placeholder} />
+        <View style={styles.divider} />
+        <Row icon="chatbubble-outline" label="日記文体" onPress={placeholder} />
+      </View>
+
+      <SectionHeader title="データ" />
+      <View style={styles.section}>
+        <Row icon="trash-outline" label="全データ削除" onPress={placeholder} destructive />
+      </View>
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#F5F5F5',
-  },
-  screenTitle: {
-    fontSize: 28,
-    fontWeight: '700',
-    color: '#1A1A1A',
-    paddingHorizontal: 20,
-    paddingTop: 16,
-    paddingBottom: 24,
-  },
-  section: {
-    marginBottom: 32,
-    paddingHorizontal: 20,
-  },
-  sectionLabel: {
-    fontSize: 13,
+  container: { flex: 1, backgroundColor: '#F2F2F7' },
+  content: { paddingVertical: 16 },
+
+  sectionHeader: {
+    fontSize: 12,
     fontWeight: '600',
-    color: '#888',
+    color: SUB,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
-    marginBottom: 8,
+    paddingHorizontal: 16,
+    paddingTop: 20,
+    paddingBottom: 6,
   },
-  card: {
+
+  section: {
     backgroundColor: '#fff',
     borderRadius: 12,
+    marginHorizontal: 16,
     overflow: 'hidden',
   },
+
   row: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
+    paddingVertical: 13,
     paddingHorizontal: 16,
-    paddingVertical: 14,
+    minHeight: 48,
   },
-  rowLabel: {
-    fontSize: 16,
-    color: '#1A1A1A',
-  },
-  rowValue: {
-    fontSize: 16,
-    color: '#888',
-    maxWidth: '55%',
-    textAlign: 'right',
-  },
+  rowIcon: { marginRight: 12 },
+  rowLabel: { flex: 1, fontSize: 16, color: TEXT },
+  destructiveLabel: { color: DESTRUCTIVE },
+  rowValue: { fontSize: 16, color: SUB, marginRight: 6 },
+
   divider: {
     height: StyleSheet.hairlineWidth,
-    backgroundColor: '#E0E0E0',
-    marginLeft: 16,
-  },
-  logoutRow: {
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-  },
-  logoutText: {
-    fontSize: 16,
-    color: '#E53935',
+    backgroundColor: '#E5E5EA',
+    marginLeft: 48,
   },
 });
