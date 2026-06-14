@@ -9,7 +9,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Calendar, LocaleConfig, type CalendarProps, type DateData } from 'react-native-calendars';
-import { router } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import { useCalendarEntries, type CalendarEntry } from '../../src/hooks/useCalendarEntries';
 
 LocaleConfig.locales['ja'] = {
@@ -94,7 +94,9 @@ export default function CalendarScreen() {
   const [selectedDate, setSelectedDate] = useState<string>(getTodayStr());
 
   const displayMonthStr = toMonthKey(displayMonth.year, displayMonth.month);
-  const { entriesByDate, loading } = useCalendarEntries(displayMonthStr);
+  const { entriesByDate, loading, refetch } = useCalendarEntries(displayMonthStr);
+
+  useFocusEffect(useCallback(() => { refetch(); }, [refetch]));
 
   const prevMonth = useCallback(() => {
     setDisplayMonth((prev) => {
