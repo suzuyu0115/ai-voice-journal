@@ -67,7 +67,7 @@ export default function SummaryScreen() {
 
     return (
       <View style={styles.screen}>
-        <Stack.Screen options={{ title: headerTitle, headerBackVisible: true, headerBackTitle: '' }} />
+        <Stack.Screen options={{ title: headerTitle, headerBackVisible: true, headerBackTitle: '', headerBackButtonDisplayMode: 'minimal' }} />
 
         {entryLoading ? (
           <View style={styles.centered}>
