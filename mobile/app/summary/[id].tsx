@@ -1,24 +1,102 @@
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator, TextInput } from 'react-native';
-import { Stack, useRouter } from 'expo-router';
+import { Stack, useRouter, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 import { useSummary } from '../../src/hooks/useSummary';
+import { useDiaryEntry } from '../../src/hooks/useDiaryEntry';
 import { useJournalStore } from '../../src/store/journalStore';
 import { BottomTabBar } from '../../src/components/BottomTabBar';
 
+const DOW_JA = ['日', '月', '火', '水', '木', '金', '土'] as const;
+
+function formatDate(iso: string) {
+  const d = new Date(iso);
+  const dow = DOW_JA[d.getDay()];
+  return `${d.getFullYear()}年${d.getMonth() + 1}月${d.getDate()}日（${dow}）`;
+}
+
 export default function SummaryScreen() {
   const router = useRouter();
-  const { title, body, setTitle, setBody, isGenerating, isSaving, error, saveEntry, retry } = useSummary();
+  const { id } = useLocalSearchParams<{ id: string }>();
   const { pendingMessages } = useJournalStore();
+  const isViewMode = pendingMessages.length === 0;
+
+  // 表示モード: Supabase から既存エントリーを取得
+  const { entry, loading: entryLoading, error: entryError } = useDiaryEntry(isViewMode ? id : null);
+
+  // 作成モード: 会話からサマリーを生成
+  const { title, body, setTitle, setBody, isGenerating, isSaving, error, saveEntry, retry } = useSummary();
+
   const [isEditing, setIsEditing] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
 
   const handleSave = async () => {
-    const id = await saveEntry();
-    if (id !== null) {
+    const savedId = await saveEntry();
+    if (savedId !== null) {
       router.replace('/');
     }
   };
 
+  // ─── 表示モード ───
+  if (isViewMode) {
+    return (
+      <View style={styles.screen}>
+        <Stack.Screen options={{ title: '日記詳細', headerBackVisible: true }} />
+
+        {entryLoading ? (
+          <View style={styles.centered}>
+            <ActivityIndicator size="large" color="#4A90E2" />
+          </View>
+        ) : entryError || !entry ? (
+          <View style={styles.centered}>
+            <Text style={styles.errorText}>日記の読み込みに失敗しました</Text>
+            <TouchableOpacity style={styles.discardButton} onPress={() => router.back()}>
+              <Text style={styles.discardText}>戻る</Text>
+            </TouchableOpacity>
+          </View>
+        ) : (
+          <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+            <View style={styles.headerRow}>
+              <Text style={styles.dateLabel}>{formatDate(entry.created_at)}</Text>
+            </View>
+
+            <Text style={styles.titleText}>{entry.title || '（タイトルなし）'}</Text>
+
+            <View style={styles.bodyCard}>
+              <Text style={styles.bodyText}>{entry.diary_text || '（本文なし）'}</Text>
+            </View>
+
+            {entry.conversation_log?.length > 0 && (
+              <View style={styles.historySection}>
+                <TouchableOpacity style={styles.historyToggle} onPress={() => setShowHistory(!showHistory)}>
+                  <Text style={styles.historyToggleText}>
+                    {showHistory ? '▲ 会話履歴を閉じる' : '▼ 会話履歴を見る'}
+                  </Text>
+                </TouchableOpacity>
+                {showHistory && (
+                  <View style={styles.historyList}>
+                    {entry.conversation_log.map((msg, i) => (
+                      <View key={i} style={[styles.historyItem, msg.role === 'user' ? styles.historyUser : styles.historyAI]}>
+                        <Text style={styles.historyRole}>{msg.role === 'user' ? 'あなた' : 'AI'}</Text>
+                        <Text style={styles.historyText}>{msg.text}</Text>
+                      </View>
+                    ))}
+                  </View>
+                )}
+              </View>
+            )}
+
+            <TouchableOpacity style={styles.discardButton} onPress={() => router.back()}>
+              <Text style={styles.discardText}>← カレンダーに戻る</Text>
+            </TouchableOpacity>
+          </ScrollView>
+        )}
+
+        <BottomTabBar />
+      </View>
+    );
+  }
+
+  // ─── 作成モード（会話後）───
   return (
     <View style={styles.screen}>
       <Stack.Screen options={{ title: 'サマリー', headerBackVisible: false }} />
@@ -179,10 +257,7 @@ const styles = StyleSheet.create({
   historyToggle: { paddingVertical: 10, alignItems: 'center' },
   historyToggleText: { fontSize: 13, color: '#4A90E2', fontWeight: '600' },
   historyList: { marginTop: 8, gap: 8 },
-  historyItem: {
-    borderRadius: 12,
-    padding: 12,
-  },
+  historyItem: { borderRadius: 12, padding: 12 },
   historyUser: { backgroundColor: '#EBF4FF', alignSelf: 'flex-end', maxWidth: '85%' },
   historyAI: { backgroundColor: '#fff', alignSelf: 'flex-start', maxWidth: '85%', borderWidth: 1, borderColor: '#eee' },
   historyRole: { fontSize: 10, color: '#999', marginBottom: 4, fontWeight: '600' },
