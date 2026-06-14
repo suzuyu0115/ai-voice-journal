@@ -3,7 +3,7 @@ import { Stack, useRouter, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 import { useSummary } from '../../src/hooks/useSummary';
 import { useDiaryEntry } from '../../src/hooks/useDiaryEntry';
-import { updateDiaryEntry } from '../../src/lib/supabase';
+import { updateDiaryEntry, deleteDiaryEntry } from '../../src/lib/supabase';
 import { useJournalStore } from '../../src/store/journalStore';
 import { BottomTabBar } from '../../src/components/BottomTabBar';
 
@@ -48,6 +48,29 @@ export default function SummaryScreen() {
     setIsEditing(true);
   };
 
+  const handleDelete = () => {
+    Alert.alert(
+      '日記を削除',
+      'この日記を削除しますか？この操作は元に戻せません。',
+      [
+        { text: 'キャンセル', style: 'cancel' },
+        {
+          text: '削除',
+          style: 'destructive',
+          onPress: async () => {
+            if (!id) return;
+            try {
+              await deleteDiaryEntry(id);
+              router.back();
+            } catch {
+              Alert.alert('削除失敗', '日記の削除に失敗しました。もう一度お試しください。');
+            }
+          },
+        },
+      ]
+    );
+  };
+
   const handleEditSave = async () => {
     if (!id) return;
     setIsSavingEdit(true);
@@ -83,6 +106,11 @@ export default function SummaryScreen() {
         ) : (
           <ScrollView style={styles.container} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
             <View style={styles.headerRow}>
+              {!isEditing && (
+                <TouchableOpacity style={styles.deleteButton} onPress={handleDelete}>
+                  <Text style={styles.deleteButtonText}>🗑️ 削除</Text>
+                </TouchableOpacity>
+              )}
               <TouchableOpacity
                 style={[styles.editToggle, isEditing && styles.editToggleActive]}
                 onPress={() => isEditing ? handleEditSave() : handleEditStart(entry.title, entry.diary_text)}
@@ -287,7 +315,15 @@ const styles = StyleSheet.create({
   content: { padding: 24, paddingBottom: 32, flexGrow: 1 },
   centered: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24 },
   generatingText: { marginTop: 16, fontSize: 16, color: '#666' },
-  headerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', marginBottom: 16 },
+  headerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', marginBottom: 16, gap: 8 },
+  deleteButton: {
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#e53e3e',
+  },
+  deleteButtonText: { fontSize: 13, color: '#e53e3e', fontWeight: '600' },
   dateLabel: { fontSize: 13, color: '#999' },
   editToggle: {
     paddingHorizontal: 14,
