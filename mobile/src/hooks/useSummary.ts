@@ -16,7 +16,7 @@ type UseSummaryReturn = {
 };
 
 export function useSummary(): UseSummaryReturn {
-  const { pendingMessages, addEntry } = useJournalStore();
+  const { pendingMessages, addEntry, clearPendingMessages } = useJournalStore();
   const [title, setTitle] = useState('');
   const [body, setBody] = useState('');
   const [isGenerating, setIsGenerating] = useState(() => pendingMessages.length > 0);
@@ -66,6 +66,7 @@ export function useSummary(): UseSummaryReturn {
         body,
         createdAt: data.created_at,
       });
+      clearPendingMessages();
 
       return data.id;
     } catch (e) {

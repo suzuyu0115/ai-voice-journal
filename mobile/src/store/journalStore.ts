@@ -15,6 +15,7 @@ type JournalStore = {
   addMessage: (message: Message) => void;
   clearMessages: () => void;
   setPendingMessages: (messages: Message[]) => void;
+  clearPendingMessages: () => void;
   addEntry: (entry: JournalEntry) => void;
 };
 
@@ -25,5 +26,6 @@ export const useJournalStore = create<JournalStore>((set) => ({
   addMessage: (message) => set((state) => ({ messages: [...state.messages, message] })),
   clearMessages: () => set({ messages: [] }),
   setPendingMessages: (messages) => set({ pendingMessages: messages }),
+  clearPendingMessages: () => set({ pendingMessages: [] }),
   addEntry: (entry) => set((state) => ({ entries: [entry, ...state.entries] })),
 }));
