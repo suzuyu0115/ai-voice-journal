@@ -6,9 +6,11 @@ import { useVoiceRecorder } from '../../src/hooks/useVoiceRecorder';
 import { useJournalChat } from '../../src/hooks/useJournalChat';
 import { RecordButton } from '../../src/components/RecordButton';
 import { ChatBubble } from '../../src/components/ChatBubble';
+import { useJournalStore } from '../../src/store/journalStore';
 
 export default function ConversationScreen() {
   const router = useRouter();
+  const { setPendingMessages } = useJournalStore();
   const { isRecording, transcript, interimTranscript, startRecording, stopRecording } = useVoiceRecorder();
   const { messages, isLoading, errorMessage, isConversationComplete, sendUserMessage } = useJournalChat();
   const [textInput, setTextInput] = useState('');
@@ -23,9 +25,10 @@ export default function ConversationScreen() {
 
   useEffect(() => {
     if (isConversationComplete) {
-      router.push('/summary/new');
+      setPendingMessages(messages);
+      router.replace('/summary/new');
     }
-  }, [isConversationComplete, router]);
+  }, [isConversationComplete, router, messages, setPendingMessages]);
 
   useEffect(() => {
     if (!isRecording && waitingForTranscriptRef.current) {

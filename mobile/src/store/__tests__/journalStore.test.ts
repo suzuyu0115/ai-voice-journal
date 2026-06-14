@@ -1,7 +1,7 @@
 import { useJournalStore } from '../journalStore';
 
 beforeEach(() => {
-  useJournalStore.setState({ messages: [], entries: [] });
+  useJournalStore.setState({ messages: [], pendingMessages: [], entries: [] });
 });
 
 describe('journalStore', () => {
@@ -33,12 +33,26 @@ describe('journalStore', () => {
     });
   });
 
+  describe('setPendingMessages', () => {
+    it('pendingMessages を設定できる', () => {
+      const msgs = [{ role: 'user' as const, text: '今日はよかった' }];
+      useJournalStore.getState().setPendingMessages(msgs);
+      expect(useJournalStore.getState().pendingMessages).toEqual(msgs);
+    });
+
+    it('空配列で pendingMessages をクリアできる', () => {
+      useJournalStore.getState().setPendingMessages([{ role: 'user', text: 'テスト' }]);
+      useJournalStore.getState().setPendingMessages([]);
+      expect(useJournalStore.getState().pendingMessages).toHaveLength(0);
+    });
+  });
+
   describe('addEntry', () => {
     it('日記エントリを追加できる', () => {
       const entry = {
         id: '1',
-        summary: 'テスト要約',
-        emotionScore: 7,
+        title: 'テストタイトル',
+        body: 'テスト本文',
         createdAt: '2026-06-07T00:00:00Z',
       };
       useJournalStore.getState().addEntry(entry);
@@ -47,8 +61,8 @@ describe('journalStore', () => {
     });
 
     it('新しいエントリが先頭に追加される', () => {
-      useJournalStore.getState().addEntry({ id: '1', summary: '古い', emotionScore: 5, createdAt: '2026-06-06T00:00:00Z' });
-      useJournalStore.getState().addEntry({ id: '2', summary: '新しい', emotionScore: 8, createdAt: '2026-06-07T00:00:00Z' });
+      useJournalStore.getState().addEntry({ id: '1', title: '古い', body: '古い本文', createdAt: '2026-06-06T00:00:00Z' });
+      useJournalStore.getState().addEntry({ id: '2', title: '新しい', body: '新しい本文', createdAt: '2026-06-07T00:00:00Z' });
       expect(useJournalStore.getState().entries[0].id).toBe('2');
     });
   });
