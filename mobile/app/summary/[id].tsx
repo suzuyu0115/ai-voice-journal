@@ -106,11 +106,6 @@ export default function SummaryScreen() {
         ) : (
           <ScrollView style={styles.container} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
             <View style={styles.headerRow}>
-              {!isEditing && (
-                <TouchableOpacity style={styles.deleteButton} onPress={handleDelete}>
-                  <Text style={styles.deleteButtonText}>🗑️ 削除</Text>
-                </TouchableOpacity>
-              )}
               <TouchableOpacity
                 style={[styles.editToggle, isEditing && styles.editToggleActive]}
                 onPress={() => isEditing ? handleEditSave() : handleEditStart(entry.title, entry.diary_text)}
@@ -124,6 +119,11 @@ export default function SummaryScreen() {
                   </Text>
                 )}
               </TouchableOpacity>
+              {!isEditing && (
+                <TouchableOpacity style={styles.deleteButton} onPress={handleDelete}>
+                  <Text style={styles.deleteButtonText}>🗑️ 削除</Text>
+                </TouchableOpacity>
+              )}
             </View>
 
             {isEditing ? (
