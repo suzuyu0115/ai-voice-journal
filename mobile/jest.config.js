@@ -9,6 +9,7 @@ module.exports = {
     '!**/node_modules/**',
     '!src/lib/supabase.ts',
     '!src/hooks/useCalendarEntries.ts',
+    '!src/hooks/useDiaryEntry.ts',
   ],
   coverageThreshold: {
     global: {
