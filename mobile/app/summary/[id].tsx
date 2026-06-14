@@ -63,9 +63,11 @@ export default function SummaryScreen() {
 
   // ─── 表示モード ───
   if (isViewMode) {
+    const headerTitle = entry ? formatDate(entry.created_at) : '日記詳細';
+
     return (
       <View style={styles.screen}>
-        <Stack.Screen options={{ title: '日記詳細', headerBackVisible: true }} />
+        <Stack.Screen options={{ title: headerTitle, headerBackVisible: true, headerBackTitle: '' }} />
 
         {entryLoading ? (
           <View style={styles.centered}>
@@ -81,7 +83,6 @@ export default function SummaryScreen() {
         ) : (
           <ScrollView style={styles.container} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
             <View style={styles.headerRow}>
-              <Text style={styles.dateLabel}>{formatDate(entry.created_at)}</Text>
               <TouchableOpacity
                 style={[styles.editToggle, isEditing && styles.editToggleActive]}
                 onPress={() => isEditing ? handleEditSave() : handleEditStart(entry.title, entry.diary_text)}
@@ -286,7 +287,7 @@ const styles = StyleSheet.create({
   content: { padding: 24, paddingBottom: 32, flexGrow: 1 },
   centered: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24 },
   generatingText: { marginTop: 16, fontSize: 16, color: '#666' },
-  headerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 },
+  headerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', marginBottom: 16 },
   dateLabel: { fontSize: 13, color: '#999' },
   editToggle: {
     paddingHorizontal: 14,
