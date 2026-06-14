@@ -1,8 +1,9 @@
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator, TextInput } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator, TextInput, Alert } from 'react-native';
 import { Stack, useRouter, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 import { useSummary } from '../../src/hooks/useSummary';
 import { useDiaryEntry } from '../../src/hooks/useDiaryEntry';
+import { updateDiaryEntry } from '../../src/lib/supabase';
 import { useJournalStore } from '../../src/store/journalStore';
 import { BottomTabBar } from '../../src/components/BottomTabBar';
 
@@ -29,10 +30,34 @@ export default function SummaryScreen() {
   const [isEditing, setIsEditing] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
 
+  // 表示モード用の編集状態
+  const [editTitle, setEditTitle] = useState('');
+  const [editBody, setEditBody] = useState('');
+  const [isSavingEdit, setIsSavingEdit] = useState(false);
+
   const handleSave = async () => {
     const savedId = await saveEntry();
     if (savedId !== null) {
       router.replace('/');
+    }
+  };
+
+  const handleEditStart = (currentTitle: string, currentBody: string) => {
+    setEditTitle(currentTitle);
+    setEditBody(currentBody);
+    setIsEditing(true);
+  };
+
+  const handleEditSave = async () => {
+    if (!id) return;
+    setIsSavingEdit(true);
+    try {
+      await updateDiaryEntry(id, { title: editTitle, diary_text: editBody });
+      setIsEditing(false);
+    } catch {
+      Alert.alert('保存失敗', '日記の更新に失敗しました。もう一度お試しください。');
+    } finally {
+      setIsSavingEdit(false);
     }
   };
 
@@ -54,18 +79,60 @@ export default function SummaryScreen() {
             </TouchableOpacity>
           </View>
         ) : (
-          <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+          <ScrollView style={styles.container} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
             <View style={styles.headerRow}>
               <Text style={styles.dateLabel}>{formatDate(entry.created_at)}</Text>
+              <TouchableOpacity
+                style={[styles.editToggle, isEditing && styles.editToggleActive]}
+                onPress={() => isEditing ? handleEditSave() : handleEditStart(entry.title, entry.diary_text)}
+                disabled={isSavingEdit}
+              >
+                {isSavingEdit ? (
+                  <ActivityIndicator size="small" color="#4A90E2" />
+                ) : (
+                  <Text style={[styles.editToggleText, isEditing && styles.editToggleTextActive]}>
+                    {isEditing ? '保存' : '✏️ 編集'}
+                  </Text>
+                )}
+              </TouchableOpacity>
             </View>
 
-            <Text style={styles.titleText}>{entry.title || '（タイトルなし）'}</Text>
+            {isEditing ? (
+              <TextInput
+                style={styles.titleInput}
+                value={editTitle}
+                onChangeText={setEditTitle}
+                placeholder="タイトルを入力"
+                placeholderTextColor="#bbb"
+                maxLength={50}
+              />
+            ) : (
+              <Text style={styles.titleText}>{entry.title || '（タイトルなし）'}</Text>
+            )}
 
             <View style={styles.bodyCard}>
-              <Text style={styles.bodyText}>{entry.diary_text || '（本文なし）'}</Text>
+              {isEditing ? (
+                <TextInput
+                  style={styles.bodyInput}
+                  value={editBody}
+                  onChangeText={setEditBody}
+                  placeholder="本文を入力"
+                  placeholderTextColor="#bbb"
+                  multiline
+                  textAlignVertical="top"
+                />
+              ) : (
+                <Text style={styles.bodyText}>{entry.diary_text || '（本文なし）'}</Text>
+              )}
             </View>
 
-            {entry.conversation_log?.length > 0 && (
+            {isEditing && (
+              <TouchableOpacity style={styles.discardButton} onPress={() => setIsEditing(false)}>
+                <Text style={styles.discardText}>キャンセル</Text>
+              </TouchableOpacity>
+            )}
+
+            {entry.conversation_log?.length > 0 && !isEditing && (
               <View style={styles.historySection}>
                 <TouchableOpacity style={styles.historyToggle} onPress={() => setShowHistory(!showHistory)}>
                   <Text style={styles.historyToggleText}>
@@ -85,9 +152,11 @@ export default function SummaryScreen() {
               </View>
             )}
 
-            <TouchableOpacity style={styles.discardButton} onPress={() => router.back()}>
-              <Text style={styles.discardText}>← カレンダーに戻る</Text>
-            </TouchableOpacity>
+            {!isEditing && (
+              <TouchableOpacity style={styles.discardButton} onPress={() => router.back()}>
+                <Text style={styles.discardText}>← カレンダーに戻る</Text>
+              </TouchableOpacity>
+            )}
           </ScrollView>
         )}
 

@@ -46,3 +46,14 @@ export async function insertDiaryEntry(
   if (error) throw error;
   return data as DiaryEntry;
 }
+
+export async function updateDiaryEntry(
+  id: string,
+  fields: { title?: string; diary_text?: string }
+): Promise<void> {
+  const { error } = await supabase
+    .from('diary_entries')
+    .update(fields)
+    .eq('id', id);
+  if (error) throw error;
+}
