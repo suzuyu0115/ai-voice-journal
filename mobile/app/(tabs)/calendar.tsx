@@ -11,6 +11,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Calendar, LocaleConfig, type CalendarProps, type DateData } from 'react-native-calendars';
 import { router, useFocusEffect } from 'expo-router';
 import { useCalendarEntries, type CalendarEntry } from '../../src/hooks/useCalendarEntries';
+import { useJournalStore } from '../../src/store/journalStore';
 
 LocaleConfig.locales['ja'] = {
   monthNames: ['1月', '2月', '3月', '4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月', '12月'],
@@ -92,6 +93,7 @@ export default function CalendarScreen() {
     month: today.getMonth() + 1,
   });
   const [selectedDate, setSelectedDate] = useState<string>(getTodayStr());
+  const { setTargetDate } = useJournalStore();
 
   const displayMonthStr = toMonthKey(displayMonth.year, displayMonth.month);
   const { entriesByDate, loading, refetch } = useCalendarEntries(displayMonthStr);
@@ -220,6 +222,17 @@ export default function CalendarScreen() {
           </ScrollView>
         </>
       )}
+
+      <TouchableOpacity
+        style={styles.fab}
+        onPress={() => {
+          setTargetDate(selectedDate);
+          router.push('/conversation');
+        }}
+        accessibilityLabel="この日の日記を作成"
+      >
+        <Ionicons name="mic" size={26} color="#fff" />
+      </TouchableOpacity>
     </View>
   );
 }
@@ -262,6 +275,23 @@ const styles = StyleSheet.create({
   list: { flex: 1 },
   listContent: { padding: 12, gap: 10 },
   emptyText: { textAlign: 'center', color: '#aaa', fontSize: 14, marginTop: 24 },
+
+  fab: {
+    position: 'absolute',
+    bottom: 24,
+    right: 24,
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: '#4A90E2',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.2,
+    shadowRadius: 6,
+    elevation: 5,
+  },
 
   // エントリーカード
   card: {
