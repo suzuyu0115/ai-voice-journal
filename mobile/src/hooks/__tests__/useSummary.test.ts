@@ -132,6 +132,18 @@ describe('useSummary', () => {
     expect(result.current.isGenerating).toBe(false);
   });
 
+  it('entryDate のデフォルトは今日の日付', () => {
+    const today = new Date().toISOString().slice(0, 10);
+    const { result } = renderSummaryHook();
+    expect(result.current.entryDate).toBe(today);
+  });
+
+  it('setEntryDate で日付が変更される', () => {
+    const { result } = renderSummaryHook();
+    act(() => { result.current.setEntryDate('2026-06-16'); });
+    expect(result.current.entryDate).toBe('2026-06-16');
+  });
+
   it('saveEntry が insertDiaryEntry を呼び ID を返す', async () => {
     useJournalStore.setState({ pendingMessages });
     mockGenerateSummary.mockResolvedValue({ title: 'テストタイトル', body: 'テスト本文' });
@@ -143,8 +155,25 @@ describe('useSummary', () => {
     let id: string | null = null;
     await act(async () => { id = await result.current.saveEntry(); });
 
-    expect(mockInsertDiaryEntry).toHaveBeenCalled();
+    expect(mockInsertDiaryEntry).toHaveBeenCalledWith(
+      expect.objectContaining({ created_at: expect.stringMatching(/T12:00:00\.000Z$/) })
+    );
     expect(id).toBe('abc123');
+  });
+
+  it('setEntryDate で昨日に変更後、saveEntry が昨日の created_at で呼ばれる', async () => {
+    useJournalStore.setState({ pendingMessages });
+    mockGenerateSummary.mockResolvedValue({ title: 'テストタイトル', body: 'テスト本文' });
+    mockInsertDiaryEntry.mockResolvedValue({ id: 'abc123', created_at: '2026-06-16T12:00:00Z' });
+
+    const { result } = renderSummaryHook();
+    await act(async () => {});
+    act(() => { result.current.setEntryDate('2026-06-16'); });
+    await act(async () => { await result.current.saveEntry(); });
+
+    expect(mockInsertDiaryEntry).toHaveBeenCalledWith(
+      expect.objectContaining({ created_at: '2026-06-16T12:00:00.000Z' })
+    );
   });
 
   it('saveEntry 成功後、ストアの entries に追加される', async () => {

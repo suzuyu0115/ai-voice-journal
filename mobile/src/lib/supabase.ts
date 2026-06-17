@@ -49,7 +49,7 @@ export async function insertDiaryEntry(
 
 export async function updateDiaryEntry(
   id: string,
-  fields: { title?: string; diary_text?: string }
+  fields: { title?: string; diary_text?: string; created_at?: string }
 ): Promise<void> {
   const { error } = await supabase
     .from('diary_entries')
