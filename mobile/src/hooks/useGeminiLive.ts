@@ -1,5 +1,5 @@
 import { useCallback, useRef, useState } from 'react';
-import { GoogleGenAI, Modality } from '@google/genai/web';
+import { GoogleGenAI, Modality, EndSensitivity } from '@google/genai/web';
 import type { LiveServerMessage, Session } from '@google/genai/web';
 import { Buffer } from 'buffer';
 import {
@@ -70,12 +70,15 @@ export function useGeminiLive(): UseGeminiLiveReturn {
   const pendingModelTextRef = useRef('');
   const rallyCountRef = useRef(0);
   const isWrappingUpRef = useRef(false);
+  // AI発話中のマイクゲート用（state はコールバック内で参照できないため ref を使う）
+  const isAiSpeakingRef = useRef(false);
 
   useExpoTwoWayAudioEventListener(
     'onMicrophoneData',
     useCallback((event: { data: Uint8Array }) => {
       const session = sessionRef.current;
-      if (!session) return;
+      // AI発話中はマイクデータを送らない（エコー防止）
+      if (!session || isAiSpeakingRef.current) return;
       const base64 = Buffer.from(event.data).toString('base64');
       session.sendRealtimeInput({ audio: { data: base64, mimeType: 'audio/pcm;rate=16000' } });
     }, [])
@@ -118,6 +121,7 @@ export function useGeminiLive(): UseGeminiLiveReturn {
     for (const part of parts) {
       const inline = part.inlineData;
       if (inline?.data && inline.mimeType?.startsWith('audio/')) {
+        isAiSpeakingRef.current = true;
         setIsAiSpeaking(true);
         const raw = new Uint8Array(Buffer.from(inline.data, 'base64'));
         const downsampled = downsamplePcm16(raw, LIVE_OUTPUT_SAMPLE_RATE, PLAYBACK_SAMPLE_RATE);
@@ -126,6 +130,7 @@ export function useGeminiLive(): UseGeminiLiveReturn {
     }
 
     if (content.turnComplete) {
+      isAiSpeakingRef.current = false;
       setIsAiSpeaking(false);
       const userText = pendingUserTextRef.current.trim();
       const modelText = pendingModelTextRef.current.trim();
@@ -204,6 +209,13 @@ export function useGeminiLive(): UseGeminiLiveReturn {
           inputAudioTranscription: {},
           outputAudioTranscription: {},
           systemInstruction: { parts: [{ text: SYSTEM_INSTRUCTION }] },
+          realtimeInputConfig: {
+            automaticActivityDetection: {
+              disabled: false,
+              endOfSpeechSensitivity: EndSensitivity.END_SENSITIVITY_LOW,
+              silenceDurationMs: 1500,
+            },
+          },
         },
         callbacks: {
           onopen: () => {
