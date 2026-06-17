@@ -1,6 +1,6 @@
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator, TextInput, Alert, Modal } from 'react-native';
 import { Stack, useRouter, useLocalSearchParams } from 'expo-router';
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Calendar } from 'react-native-calendars';
 import { useSummary } from '../../src/hooks/useSummary';
 import { useDiaryEntry } from '../../src/hooks/useDiaryEntry';
@@ -27,20 +27,16 @@ const MIN_DATE = (() => { const d = new Date(); d.setDate(d.getDate() - 90); ret
 
 function DatePickerModal({
   visible,
-  selected,
+  initialDate,
   onConfirm,
   onCancel,
 }: {
   visible: boolean;
-  selected: string;
+  initialDate: string;
   onConfirm: (dateStr: string) => void;
   onCancel: () => void;
 }) {
-  const [tempDate, setTempDate] = useState(selected);
-
-  useEffect(() => {
-    if (visible) setTempDate(selected);
-  }, [visible, selected]);
+  const [tempDate, setTempDate] = useState(initialDate);
 
   return (
     <Modal visible={visible} transparent animationType="slide">
@@ -56,7 +52,7 @@ function DatePickerModal({
             </TouchableOpacity>
           </View>
           <Calendar
-            current={tempDate}
+            current={initialDate}
             maxDate={TODAY}
             minDate={MIN_DATE}
             onDayPress={(day) => setTempDate(day.dateString)}
@@ -179,8 +175,9 @@ export default function SummaryScreen() {
         />
 
         <DatePickerModal
+          key={showDatePicker ? (editDate || TODAY) : 'closed'}
           visible={showDatePicker}
-          selected={editDate || TODAY}
+          initialDate={editDate || TODAY}
           onConfirm={(date) => { setEditDate(date); setShowDatePicker(false); }}
           onCancel={() => setShowDatePicker(false)}
         />
@@ -302,8 +299,9 @@ export default function SummaryScreen() {
       />
 
       <DatePickerModal
+        key={showDatePicker ? entryDate : 'closed'}
         visible={showDatePicker}
-        selected={entryDate}
+        initialDate={entryDate}
         onConfirm={(date) => { setEntryDate(date); setShowDatePicker(false); }}
         onCancel={() => setShowDatePicker(false)}
       />
