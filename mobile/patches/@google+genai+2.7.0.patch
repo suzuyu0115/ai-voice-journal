@@ -1,0 +1,10 @@
+diff --git a/node_modules/@google/genai/web/package.json b/node_modules/@google/genai/web/package.json
+index 606dd1f..658dc1f 100644
+--- a/node_modules/@google/genai/web/package.json
++++ b/node_modules/@google/genai/web/package.json
+@@ -1,4 +1,5 @@
+ {
+   "name": "@google/genai/web",
++  "main": "../dist/web/index.mjs",
+   "module": "../dist/web/index.mjs"
+ }

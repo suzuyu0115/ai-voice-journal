@@ -35,14 +35,7 @@
     },
     "plugins": [
       "expo-router",
-      "expo-sqlite",
-      [
-        "expo-speech-recognition",
-        {
-          "microphonePermission": "日記を録音するためにマイクを使用します。",
-          "speechRecognitionPermission": "音声認識を使用して会話を文字起こしします。"
-        }
-      ]
+      "expo-sqlite"
     ]
   }
 }
