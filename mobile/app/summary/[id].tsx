@@ -1,7 +1,7 @@
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator, TextInput, Alert, Platform, Modal } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator, TextInput, Alert, Modal } from 'react-native';
 import { Stack, useRouter, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
-import DateTimePicker from '@react-native-community/datetimepicker';
+import { Calendar } from 'react-native-calendars';
 import { useSummary } from '../../src/hooks/useSummary';
 import { useDiaryEntry } from '../../src/hooks/useDiaryEntry';
 import { updateDiaryEntry, deleteDiaryEntry } from '../../src/lib/supabase';
@@ -22,21 +22,10 @@ function formatDateFromStr(dateStr: string) {
   return `${d.getUTCFullYear()}年${d.getUTCMonth() + 1}月${d.getUTCDate()}日（${dow}）`;
 }
 
-type DateOption = { label: string; dateStr: string };
+const TODAY = new Date().toISOString().slice(0, 10);
+const MIN_DATE = (() => { const d = new Date(); d.setDate(d.getDate() - 90); return d.toISOString().slice(0, 10); })();
 
-function getPresetOptions(): DateOption[] {
-  return [0, 1, 2].map((daysAgo) => {
-    const d = new Date();
-    d.setDate(d.getDate() - daysAgo);
-    const dateStr = d.toISOString().slice(0, 10);
-    return { label: ['今日', '昨日', '一昨日'][daysAgo], dateStr };
-  });
-}
-
-const MAX_DATE = new Date();
-const MIN_DATE = (() => { const d = new Date(); d.setDate(d.getDate() - 90); return d; })();
-
-function DateChipPicker({
+function DatePickerField({
   selected,
   onChange,
 }: {
@@ -44,45 +33,17 @@ function DateChipPicker({
   onChange: (dateStr: string) => void;
 }) {
   const [showModal, setShowModal] = useState(false);
-  const [tempDate, setTempDate] = useState(new Date(`${selected}T12:00:00Z`));
+  const [tempDate, setTempDate] = useState(selected);
 
-  const presets = getPresetOptions();
-  const presetDates = presets.map((p) => p.dateStr);
-  const isCustom = !presetDates.includes(selected);
-
-  const openModal = () => {
-    setTempDate(new Date(`${selected}T12:00:00Z`));
-    setShowModal(true);
-  };
-
-  const handleConfirm = () => {
-    onChange(tempDate.toISOString().slice(0, 10));
-    setShowModal(false);
-  };
+  const open = () => { setTempDate(selected); setShowModal(true); };
+  const confirm = () => { onChange(tempDate); setShowModal(false); };
 
   return (
-    <View style={styles.chipSection}>
-      <View style={styles.chipRow}>
-        {presets.map(({ label, dateStr }) => (
-          <TouchableOpacity
-            key={dateStr}
-            style={[styles.chip, selected === dateStr && styles.chipSelected]}
-            onPress={() => onChange(dateStr)}
-          >
-            <Text style={[styles.chipText, selected === dateStr && styles.chipTextSelected]}>
-              {label}
-            </Text>
-          </TouchableOpacity>
-        ))}
-        <TouchableOpacity
-          style={[styles.chip, isCustom && styles.chipSelected]}
-          onPress={openModal}
-        >
-          <Text style={[styles.chipText, isCustom && styles.chipTextSelected]}>
-            {isCustom ? formatDateFromStr(selected) : '日付を選択...'}
-          </Text>
-        </TouchableOpacity>
-      </View>
+    <>
+      <TouchableOpacity style={styles.dateFieldBtn} onPress={open} activeOpacity={0.7}>
+        <Text style={styles.dateFieldText}>{formatDateFromStr(selected)}</Text>
+        <Text style={styles.dateFieldArrow}>›</Text>
+      </TouchableOpacity>
 
       <Modal visible={showModal} transparent animationType="slide">
         <View style={styles.modalOverlay}>
@@ -92,24 +53,31 @@ function DateChipPicker({
                 <Text style={styles.modalCancelIcon}>✕</Text>
               </TouchableOpacity>
               <Text style={styles.modalTitle}>日付を編集</Text>
-              <TouchableOpacity style={styles.modalConfirmBtn} onPress={handleConfirm}>
+              <TouchableOpacity style={styles.modalConfirmBtn} onPress={confirm}>
                 <Text style={styles.modalConfirmIcon}>✓</Text>
               </TouchableOpacity>
             </View>
-            <DateTimePicker
-              value={tempDate}
-              mode="date"
-              display={Platform.OS === 'ios' ? 'inline' : 'default'}
-              maximumDate={MAX_DATE}
-              minimumDate={MIN_DATE}
-              onChange={(_, date) => { if (date) setTempDate(date); }}
-              locale="ja"
-              style={styles.datePicker}
+            <Calendar
+              current={tempDate}
+              maxDate={TODAY}
+              minDate={MIN_DATE}
+              onDayPress={(day) => setTempDate(day.dateString)}
+              markedDates={{ [tempDate]: { selected: true, selectedColor: '#4A90E2' } }}
+              theme={{
+                todayTextColor: '#4A90E2',
+                arrowColor: '#4A90E2',
+                selectedDayBackgroundColor: '#4A90E2',
+                selectedDayTextColor: '#fff',
+                textDayFontSize: 16,
+                textMonthFontSize: 15,
+                textMonthFontWeight: '700',
+                calendarBackground: '#fff',
+              }}
             />
           </View>
         </View>
       </Modal>
-    </View>
+    </>
   );
 }
 
@@ -233,7 +201,7 @@ export default function SummaryScreen() {
             </View>
 
             {isEditing && (
-              <DateChipPicker selected={editDate} onChange={setEditDate} />
+              <DatePickerField selected={editDate} onChange={setEditDate} />
             )}
 
             {isEditing ? (
@@ -328,7 +296,6 @@ export default function SummaryScreen() {
       ) : (
         <ScrollView style={styles.container} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
           <View style={styles.headerRow}>
-            <Text style={styles.dateLabel}>{formatDateFromStr(entryDate)}</Text>
             <TouchableOpacity
               style={[styles.editToggle, isEditing && styles.editToggleActive]}
               onPress={() => setIsEditing(!isEditing)}
@@ -339,7 +306,7 @@ export default function SummaryScreen() {
             </TouchableOpacity>
           </View>
 
-          <DateChipPicker selected={entryDate} onChange={setEntryDate} />
+          <DatePickerField selected={entryDate} onChange={setEntryDate} />
 
           {isEditing ? (
             <TextInput
@@ -425,7 +392,7 @@ const styles = StyleSheet.create({
   content: { padding: 24, paddingBottom: 32, flexGrow: 1 },
   centered: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24 },
   generatingText: { marginTop: 16, fontSize: 16, color: '#666' },
-  headerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', marginBottom: 16, gap: 8 },
+  headerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', marginBottom: 12, gap: 8 },
   deleteButton: {
     paddingHorizontal: 14,
     paddingVertical: 6,
@@ -434,20 +401,14 @@ const styles = StyleSheet.create({
     borderColor: '#e53e3e',
   },
   deleteButtonText: { fontSize: 13, color: '#e53e3e', fontWeight: '600' },
-  dateLabel: { fontSize: 13, color: '#999', flex: 1 },
-  chipSection: { marginBottom: 16 },
-  chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  chip: {
-    paddingHorizontal: 14,
-    paddingVertical: 6,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: '#C7C7CC',
-    backgroundColor: '#fff',
+  dateFieldBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 16,
+    paddingVertical: 4,
   },
-  chipSelected: { backgroundColor: '#4A90E2', borderColor: '#4A90E2' },
-  chipText: { fontSize: 13, color: '#555', fontWeight: '500' },
-  chipTextSelected: { color: '#fff' },
+  dateFieldText: { fontSize: 14, color: '#4A90E2', fontWeight: '600' },
+  dateFieldArrow: { fontSize: 18, color: '#4A90E2', marginLeft: 4, lineHeight: 20 },
   modalOverlay: {
     flex: 1,
     justifyContent: 'flex-end',
@@ -485,7 +446,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   modalConfirmIcon: { fontSize: 17, color: '#fff', fontWeight: '700' },
-  datePicker: { marginHorizontal: 8 },
   editToggle: {
     paddingHorizontal: 14,
     paddingVertical: 6,
