@@ -26,6 +26,7 @@ const mockConnect = jest.fn(({ callbacks }: { callbacks: LiveCallbacks }) => {
 jest.mock('@google/genai/web', () => ({
   GoogleGenAI: jest.fn().mockImplementation(() => ({ live: { connect: mockConnect } })),
   Modality: { AUDIO: 'AUDIO' },
+  EndSensitivity: { END_SENSITIVITY_LOW: 'END_SENSITIVITY_LOW' },
 }));
 
 jest.mock('@speechmatics/expo-two-way-audio', () => ({
