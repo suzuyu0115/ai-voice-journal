@@ -17,9 +17,7 @@ ai-voice-journal/
 | レイヤー | 技術 |
 |---------|------|
 | モバイル | React Native + Expo 56 (TypeScript) |
-| STT | `expo-speech-recognition`（iOS native、旧 `@react-native-voice/voice` は非推奨のため変更） |
-| AI 会話 | Gemini API `gemini-2.5-flash`（テキストのみ） |
-| TTS | `expo-speech` |
+| AI 会話・STT・TTS | Gemini Live API `gemini-2.5-flash-preview-native-audio`（リアルタイム双方向音声）|
 | 状態管理 | Zustand |
 | DB / Auth | Supabase |
 | ナビゲーション | expo-router + `@expo/vector-icons`（タブアイコン）|
@@ -88,16 +86,16 @@ app/
 
 ```
 mobile/src/
-├── hooks/       # useVoiceRecorder.ts, useJournalChat.ts, useSummary.ts, useCalendarEntries.ts
+├── hooks/       # useGeminiLive.ts, useAuth.ts, useSummary.ts, useCalendarEntries.ts, useDiaryEntry.ts, useDiaryList.ts
 ├── lib/         # gemini.ts, supabase.ts（APIクライアント）
 ├── store/       # journalStore.ts（Zustand）
-└── components/  # RecordButton, ChatBubble, BottomTabBar
+└── components/  # BottomTabBar
 ```
 
 ## 注意事項
 
 - `.env` は絶対にコミットしない（`.gitignore` で除外済み）
-- Expo Go では動作しない（`expo-speech-recognition` がネイティブモジュールのため）
+- Expo Go では動作しない（`@speechmatics/expo-two-way-audio` がネイティブモジュールのため）
 - `api/` は MVP では触らない
 - 実装はチケット（GitHub Issues）単位で進める
 
@@ -169,28 +167,30 @@ gh pr create \
 
 ---
 
-## 現在の実装状況（2026-06-14時点）
+## 現在の実装状況（2026-06-18時点）
 
 ### 完了済み
 - Expo SDK 56 プロジェクト作成（`mobile/`）
-- 全パッケージインストール済み: expo-router, expo-sqlite, expo-av, expo-haptics, async-storage, zustand, @google/genai, expo-speech, expo-speech-recognition, @supabase/supabase-js, @expo/vector-icons, react-native-calendars
-- app.json 設定済み（scheme, マイク権限, expo-speech-recognition plugin）
+- 全パッケージインストール済み: expo-router, expo-sqlite, expo-av, expo-haptics, async-storage, zustand, @google/genai, @supabase/supabase-js, @expo/vector-icons, react-native-calendars, @speechmatics/expo-two-way-audio, @react-native-community/datetimepicker
+- app.json 設定済み（scheme, マイク権限）
 - GitHub リポジトリ作成・push済み
 - `src/lib/gemini.ts`・`src/lib/supabase.ts`・`src/store/journalStore.ts` 作成済み
 - **#19** フッターナビゲーションバー（4タブ: ホーム・会話・カレンダー・設定）
-- **#16** 会話機能フル実装（STT・Gemini ストリーミング・TTS・3ラリー終了・[END]検知）
+- **#42** 会話機能を Gemini Live API に刷新（リアルタイム双方向音声・`useGeminiLive.ts`）
 - **#8** サマリー画面実装（Gemini によるタイトル+本文生成・編集モード・Supabase 保存・会話履歴表示）
 - **#21** カレンダー画面実装（月間カレンダー・日記エントリープレビュー）
 - **#31** 設定画面実装（iOS Settings スタイル UI・アプリバージョン表示・各機能プレースホルダー）
 - **#30** カレンダーから日記詳細表示（`summary/[id].tsx` を表示モード／作成モードの2モードに対応）
+- **#49** 匿名認証（Supabase Anonymous Auth）によるユーザーデータ分離（`useAuth.ts`・RLS 設定済み）
 
 ### コードの状態
 - `app/(tabs)/` 配下に4画面（index, conversation, calendar, settings）。settings は iOS Settings スタイルで実装済み（バージョン表示・通知・AI設定・データ削除の4セクション）
 - `app/summary/[id].tsx` 実装済み。**2モード対応**: 表示モード（カレンダーから・`useDiaryEntry` で Supabase 取得）／作成モード（会話後・生成・編集・保存）
-- `src/hooks/useVoiceRecorder.ts`・`src/hooks/useJournalChat.ts`・`src/hooks/useSummary.ts`・`src/hooks/useCalendarEntries.ts`・`src/hooks/useDiaryEntry.ts` 実装済み
-- `src/components/RecordButton.tsx`・`src/components/ChatBubble.tsx`・`src/components/BottomTabBar.tsx` 実装済み
+- `app/_layout.tsx`: 起動時に匿名認証を自動初期化（`signInAnonymously`）
+- `src/hooks/useGeminiLive.ts`・`src/hooks/useAuth.ts`・`src/hooks/useSummary.ts`・`src/hooks/useCalendarEntries.ts`・`src/hooks/useDiaryEntry.ts`・`src/hooks/useDiaryList.ts` 実装済み
+- `src/components/BottomTabBar.tsx` 実装済み
 - `src/lib/gemini.ts`: `generateSummary` 追加（`{ title, body }` を JSON で返す）
-- `src/lib/supabase.ts`: `DiaryEntry` 型（title カラムあり、emotion_score なし）、`insertDiaryEntry` ヘルパー実装済み
+- `src/lib/supabase.ts`: `DiaryEntry` 型（title カラムあり）、`insertDiaryEntry`・`updateDiaryEntry`・`deleteDiaryEntry` ヘルパー実装済み
 - `src/store/journalStore.ts`: `JournalEntry { id, title, body, createdAt }`、`pendingMessages` state 追加済み
 - 実機ビルド確認済み（bundleIdentifier: com.suzuyu0115.aivoicejournal、Personal Team 署名）
 
@@ -199,12 +199,13 @@ gh pr create \
 |--------|-----|------|
 | id | uuid | PK, auto |
 | created_at | timestamptz | auto |
+| user_id | uuid | DEFAULT auth.uid(), 外部キー auth.users |
 | title | text | NOT NULL, max 50字 |
 | conversation_log | jsonb | `[{role, text}]` |
 | diary_text | text | AI生成本文 |
 | tags | text[] | |
 
-RLS: INSERT TO anon WITH CHECK (true) を設定済み（MVP 用）
+RLS: SELECT/INSERT/UPDATE/DELETE すべてに `auth.uid() = user_id` を設定済み
 
 ### 次のステップ
 - **#9** 日記一覧・Supabase 保存・ストリーク
@@ -235,8 +236,10 @@ RLS: INSERT TO anon WITH CHECK (true) を設定済み（MVP 用）
 | #21 | カレンダー画面実装（GitHub草スタイル→日記プレビュー）| feature | 完了 |
 | #30 | カレンダーから日記詳細画面にアクセス | fix | 完了（PR #32）|
 | #31 | 設定画面実装（iOS Settings スタイル UI）| feature | 完了 |
+| #42 | Gemini Live API による双方向音声会話に刷新 | feature | 完了（PR #43）|
+| #49 | 匿名認証でユーザーデータを分離（Supabase Anonymous Auth）| feature | 完了（PR #52）|
 
 ## 推奨着手順序
 
-1. ~~#1〜#7, #16, #19, #8, #21, #30, #31~~ 完了済み
+1. ~~#1〜#7, #16, #19, #8, #21, #30, #31, #42, #49~~ 完了済み
 2. **#9** 日記一覧・Supabase 保存・ストリーク
