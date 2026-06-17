@@ -1,6 +1,7 @@
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator, TextInput, Alert } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator, TextInput, Alert, Platform } from 'react-native';
 import { Stack, useRouter, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
+import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
 import { useSummary } from '../../src/hooks/useSummary';
 import { useDiaryEntry } from '../../src/hooks/useDiaryEntry';
 import { updateDiaryEntry, deleteDiaryEntry } from '../../src/lib/supabase';
@@ -23,7 +24,7 @@ function formatDateFromStr(dateStr: string) {
 
 type DateOption = { label: string; dateStr: string };
 
-function getDateOptions(): DateOption[] {
+function getPresetOptions(): DateOption[] {
   return [0, 1, 2].map((daysAgo) => {
     const d = new Date();
     d.setDate(d.getDate() - daysAgo);
@@ -39,19 +40,63 @@ function DateChipPicker({
   selected: string;
   onChange: (dateStr: string) => void;
 }) {
+  const [showPicker, setShowPicker] = useState(false);
+
+  const presets = getPresetOptions();
+  const presetDates = presets.map((p) => p.dateStr);
+  const isCustom = !presetDates.includes(selected);
+
+  const maxDate = new Date();
+  const minDate = new Date();
+  minDate.setDate(minDate.getDate() - 90);
+
+  const handlePickerChange = (_event: DateTimePickerEvent, date?: Date) => {
+    if (Platform.OS === 'android') setShowPicker(false);
+    if (date) {
+      onChange(date.toISOString().slice(0, 10));
+    }
+  };
+
   return (
-    <View style={styles.chipRow}>
-      {getDateOptions().map(({ label, dateStr }) => (
+    <View style={styles.chipSection}>
+      <View style={styles.chipRow}>
+        {presets.map(({ label, dateStr }) => (
+          <TouchableOpacity
+            key={dateStr}
+            style={[styles.chip, selected === dateStr && styles.chipSelected]}
+            onPress={() => onChange(dateStr)}
+          >
+            <Text style={[styles.chipText, selected === dateStr && styles.chipTextSelected]}>
+              {label}
+            </Text>
+          </TouchableOpacity>
+        ))}
         <TouchableOpacity
-          key={dateStr}
-          style={[styles.chip, selected === dateStr && styles.chipSelected]}
-          onPress={() => onChange(dateStr)}
+          style={[styles.chip, isCustom && styles.chipSelected]}
+          onPress={() => setShowPicker(true)}
         >
-          <Text style={[styles.chipText, selected === dateStr && styles.chipTextSelected]}>
-            {label}
+          <Text style={[styles.chipText, isCustom && styles.chipTextSelected]}>
+            {isCustom ? formatDateFromStr(selected) : '日付を選択...'}
           </Text>
         </TouchableOpacity>
-      ))}
+      </View>
+
+      {showPicker && (
+        <DateTimePicker
+          value={new Date(`${selected}T12:00:00Z`)}
+          mode="date"
+          display={Platform.OS === 'ios' ? 'inline' : 'default'}
+          maximumDate={maxDate}
+          minimumDate={minDate}
+          onChange={handlePickerChange}
+          locale="ja"
+        />
+      )}
+      {showPicker && Platform.OS === 'ios' && (
+        <TouchableOpacity style={styles.pickerDone} onPress={() => setShowPicker(false)}>
+          <Text style={styles.pickerDoneText}>完了</Text>
+        </TouchableOpacity>
+      )}
     </View>
   );
 }
@@ -378,7 +423,8 @@ const styles = StyleSheet.create({
   },
   deleteButtonText: { fontSize: 13, color: '#e53e3e', fontWeight: '600' },
   dateLabel: { fontSize: 13, color: '#999', flex: 1 },
-  chipRow: { flexDirection: 'row', gap: 8, marginBottom: 16 },
+  chipSection: { marginBottom: 16 },
+  chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   chip: {
     paddingHorizontal: 14,
     paddingVertical: 6,
@@ -390,6 +436,8 @@ const styles = StyleSheet.create({
   chipSelected: { backgroundColor: '#4A90E2', borderColor: '#4A90E2' },
   chipText: { fontSize: 13, color: '#555', fontWeight: '500' },
   chipTextSelected: { color: '#fff' },
+  pickerDone: { alignItems: 'flex-end', paddingVertical: 8 },
+  pickerDoneText: { fontSize: 15, color: '#4A90E2', fontWeight: '600' },
   editToggle: {
     paddingHorizontal: 14,
     paddingVertical: 6,
