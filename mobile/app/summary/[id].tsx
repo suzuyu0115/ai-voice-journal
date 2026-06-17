@@ -1,7 +1,7 @@
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator, TextInput, Alert, Platform } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator, TextInput, Alert, Platform, Modal } from 'react-native';
 import { Stack, useRouter, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
-import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import { useSummary } from '../../src/hooks/useSummary';
 import { useDiaryEntry } from '../../src/hooks/useDiaryEntry';
 import { updateDiaryEntry, deleteDiaryEntry } from '../../src/lib/supabase';
@@ -33,6 +33,9 @@ function getPresetOptions(): DateOption[] {
   });
 }
 
+const MAX_DATE = new Date();
+const MIN_DATE = (() => { const d = new Date(); d.setDate(d.getDate() - 90); return d; })();
+
 function DateChipPicker({
   selected,
   onChange,
@@ -40,21 +43,21 @@ function DateChipPicker({
   selected: string;
   onChange: (dateStr: string) => void;
 }) {
-  const [showPicker, setShowPicker] = useState(false);
+  const [showModal, setShowModal] = useState(false);
+  const [tempDate, setTempDate] = useState(new Date(`${selected}T12:00:00Z`));
 
   const presets = getPresetOptions();
   const presetDates = presets.map((p) => p.dateStr);
   const isCustom = !presetDates.includes(selected);
 
-  const maxDate = new Date();
-  const minDate = new Date();
-  minDate.setDate(minDate.getDate() - 90);
+  const openModal = () => {
+    setTempDate(new Date(`${selected}T12:00:00Z`));
+    setShowModal(true);
+  };
 
-  const handlePickerChange = (_event: DateTimePickerEvent, date?: Date) => {
-    if (Platform.OS === 'android') setShowPicker(false);
-    if (date) {
-      onChange(date.toISOString().slice(0, 10));
-    }
+  const handleConfirm = () => {
+    onChange(tempDate.toISOString().slice(0, 10));
+    setShowModal(false);
   };
 
   return (
@@ -73,7 +76,7 @@ function DateChipPicker({
         ))}
         <TouchableOpacity
           style={[styles.chip, isCustom && styles.chipSelected]}
-          onPress={() => setShowPicker(true)}
+          onPress={openModal}
         >
           <Text style={[styles.chipText, isCustom && styles.chipTextSelected]}>
             {isCustom ? formatDateFromStr(selected) : '日付を選択...'}
@@ -81,22 +84,31 @@ function DateChipPicker({
         </TouchableOpacity>
       </View>
 
-      {showPicker && (
-        <DateTimePicker
-          value={new Date(`${selected}T12:00:00Z`)}
-          mode="date"
-          display={Platform.OS === 'ios' ? 'inline' : 'default'}
-          maximumDate={maxDate}
-          minimumDate={minDate}
-          onChange={handlePickerChange}
-          locale="ja"
-        />
-      )}
-      {showPicker && Platform.OS === 'ios' && (
-        <TouchableOpacity style={styles.pickerDone} onPress={() => setShowPicker(false)}>
-          <Text style={styles.pickerDoneText}>完了</Text>
-        </TouchableOpacity>
-      )}
+      <Modal visible={showModal} transparent animationType="slide">
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalSheet}>
+            <View style={styles.modalHeader}>
+              <TouchableOpacity style={styles.modalCancelBtn} onPress={() => setShowModal(false)}>
+                <Text style={styles.modalCancelIcon}>✕</Text>
+              </TouchableOpacity>
+              <Text style={styles.modalTitle}>日付を編集</Text>
+              <TouchableOpacity style={styles.modalConfirmBtn} onPress={handleConfirm}>
+                <Text style={styles.modalConfirmIcon}>✓</Text>
+              </TouchableOpacity>
+            </View>
+            <DateTimePicker
+              value={tempDate}
+              mode="date"
+              display={Platform.OS === 'ios' ? 'inline' : 'default'}
+              maximumDate={MAX_DATE}
+              minimumDate={MIN_DATE}
+              onChange={(_, date) => { if (date) setTempDate(date); }}
+              locale="ja"
+              style={styles.datePicker}
+            />
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -436,8 +448,44 @@ const styles = StyleSheet.create({
   chipSelected: { backgroundColor: '#4A90E2', borderColor: '#4A90E2' },
   chipText: { fontSize: 13, color: '#555', fontWeight: '500' },
   chipTextSelected: { color: '#fff' },
-  pickerDone: { alignItems: 'flex-end', paddingVertical: 8 },
-  pickerDoneText: { fontSize: 15, color: '#4A90E2', fontWeight: '600' },
+  modalOverlay: {
+    flex: 1,
+    justifyContent: 'flex-end',
+    backgroundColor: 'rgba(0,0,0,0.3)',
+  },
+  modalSheet: {
+    backgroundColor: '#fff',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    paddingBottom: 32,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+  },
+  modalTitle: { fontSize: 16, fontWeight: '700', color: '#1a1a1a' },
+  modalCancelBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#E5E5EA',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  modalCancelIcon: { fontSize: 15, color: '#555', fontWeight: '600' },
+  modalConfirmBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#4A90E2',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  modalConfirmIcon: { fontSize: 17, color: '#fff', fontWeight: '700' },
+  datePicker: { marginHorizontal: 8 },
   editToggle: {
     paddingHorizontal: 14,
     paddingVertical: 6,
