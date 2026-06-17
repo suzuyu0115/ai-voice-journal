@@ -15,6 +15,47 @@ function formatDate(iso: string) {
   return `${d.getFullYear()}年${d.getMonth() + 1}月${d.getDate()}日（${dow}）`;
 }
 
+function formatDateFromStr(dateStr: string) {
+  const d = new Date(`${dateStr}T12:00:00Z`);
+  const dow = DOW_JA[d.getUTCDay()];
+  return `${d.getUTCFullYear()}年${d.getUTCMonth() + 1}月${d.getUTCDate()}日（${dow}）`;
+}
+
+type DateOption = { label: string; dateStr: string };
+
+function getDateOptions(): DateOption[] {
+  return [0, 1, 2].map((daysAgo) => {
+    const d = new Date();
+    d.setDate(d.getDate() - daysAgo);
+    const dateStr = d.toISOString().slice(0, 10);
+    return { label: ['今日', '昨日', '一昨日'][daysAgo], dateStr };
+  });
+}
+
+function DateChipPicker({
+  selected,
+  onChange,
+}: {
+  selected: string;
+  onChange: (dateStr: string) => void;
+}) {
+  return (
+    <View style={styles.chipRow}>
+      {getDateOptions().map(({ label, dateStr }) => (
+        <TouchableOpacity
+          key={dateStr}
+          style={[styles.chip, selected === dateStr && styles.chipSelected]}
+          onPress={() => onChange(dateStr)}
+        >
+          <Text style={[styles.chipText, selected === dateStr && styles.chipTextSelected]}>
+            {label}
+          </Text>
+        </TouchableOpacity>
+      ))}
+    </View>
+  );
+}
+
 export default function SummaryScreen() {
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -22,10 +63,10 @@ export default function SummaryScreen() {
   const isViewMode = pendingMessages.length === 0;
 
   // 表示モード: Supabase から既存エントリーを取得
-  const { entry, loading: entryLoading, error: entryError } = useDiaryEntry(isViewMode ? id : null);
+  const { entry, loading: entryLoading, error: entryError, refetch } = useDiaryEntry(isViewMode ? id : null);
 
   // 作成モード: 会話からサマリーを生成
-  const { title, body, setTitle, setBody, isGenerating, isSaving, error, saveEntry, retry } = useSummary();
+  const { title, body, entryDate, setTitle, setBody, setEntryDate, isGenerating, isSaving, error, saveEntry, retry } = useSummary();
 
   const [isEditing, setIsEditing] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
@@ -33,6 +74,7 @@ export default function SummaryScreen() {
   // 表示モード用の編集状態
   const [editTitle, setEditTitle] = useState('');
   const [editBody, setEditBody] = useState('');
+  const [editDate, setEditDate] = useState('');
   const [isSavingEdit, setIsSavingEdit] = useState(false);
 
   const handleSave = async () => {
@@ -43,9 +85,10 @@ export default function SummaryScreen() {
     }
   };
 
-  const handleEditStart = (currentTitle: string, currentBody: string) => {
+  const handleEditStart = (currentTitle: string, currentBody: string, currentDate: string) => {
     setEditTitle(currentTitle);
     setEditBody(currentBody);
+    setEditDate(currentDate.slice(0, 10));
     setIsEditing(true);
   };
 
@@ -76,8 +119,13 @@ export default function SummaryScreen() {
     if (!id) return;
     setIsSavingEdit(true);
     try {
-      await updateDiaryEntry(id, { title: editTitle, diary_text: editBody });
+      await updateDiaryEntry(id, {
+        title: editTitle,
+        diary_text: editBody,
+        created_at: `${editDate}T12:00:00.000Z`,
+      });
       setIsEditing(false);
+      refetch();
     } catch {
       Alert.alert('保存失敗', '日記の更新に失敗しました。もう一度お試しください。');
     } finally {
@@ -109,7 +157,7 @@ export default function SummaryScreen() {
             <View style={styles.headerRow}>
               <TouchableOpacity
                 style={[styles.editToggle, isEditing && styles.editToggleActive]}
-                onPress={() => isEditing ? handleEditSave() : handleEditStart(entry.title, entry.diary_text)}
+                onPress={() => isEditing ? handleEditSave() : handleEditStart(entry.title, entry.diary_text, entry.created_at)}
                 disabled={isSavingEdit}
               >
                 {isSavingEdit ? (
@@ -126,6 +174,10 @@ export default function SummaryScreen() {
                 </TouchableOpacity>
               )}
             </View>
+
+            {isEditing && (
+              <DateChipPicker selected={editDate} onChange={setEditDate} />
+            )}
 
             {isEditing ? (
               <TextInput
@@ -219,9 +271,7 @@ export default function SummaryScreen() {
       ) : (
         <ScrollView style={styles.container} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
           <View style={styles.headerRow}>
-            <Text style={styles.dateLabel}>
-              {new Date().toLocaleDateString('ja-JP', { year: 'numeric', month: 'long', day: 'numeric' })}
-            </Text>
+            <Text style={styles.dateLabel}>{formatDateFromStr(entryDate)}</Text>
             <TouchableOpacity
               style={[styles.editToggle, isEditing && styles.editToggleActive]}
               onPress={() => setIsEditing(!isEditing)}
@@ -231,6 +281,8 @@ export default function SummaryScreen() {
               </Text>
             </TouchableOpacity>
           </View>
+
+          <DateChipPicker selected={entryDate} onChange={setEntryDate} />
 
           {isEditing ? (
             <TextInput
@@ -325,7 +377,19 @@ const styles = StyleSheet.create({
     borderColor: '#e53e3e',
   },
   deleteButtonText: { fontSize: 13, color: '#e53e3e', fontWeight: '600' },
-  dateLabel: { fontSize: 13, color: '#999' },
+  dateLabel: { fontSize: 13, color: '#999', flex: 1 },
+  chipRow: { flexDirection: 'row', gap: 8, marginBottom: 16 },
+  chip: {
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#C7C7CC',
+    backgroundColor: '#fff',
+  },
+  chipSelected: { backgroundColor: '#4A90E2', borderColor: '#4A90E2' },
+  chipText: { fontSize: 13, color: '#555', fontWeight: '500' },
+  chipTextSelected: { color: '#fff' },
   editToggle: {
     paddingHorizontal: 14,
     paddingVertical: 6,
