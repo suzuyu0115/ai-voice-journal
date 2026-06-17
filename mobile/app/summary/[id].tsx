@@ -1,6 +1,6 @@
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator, TextInput, Alert, Modal } from 'react-native';
 import { Stack, useRouter, useLocalSearchParams } from 'expo-router';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Calendar } from 'react-native-calendars';
 import { useSummary } from '../../src/hooks/useSummary';
 import { useDiaryEntry } from '../../src/hooks/useDiaryEntry';
@@ -25,59 +25,56 @@ function formatDateFromStr(dateStr: string) {
 const TODAY = new Date().toISOString().slice(0, 10);
 const MIN_DATE = (() => { const d = new Date(); d.setDate(d.getDate() - 90); return d.toISOString().slice(0, 10); })();
 
-function DatePickerField({
+function DatePickerModal({
+  visible,
   selected,
-  onChange,
+  onConfirm,
+  onCancel,
 }: {
+  visible: boolean;
   selected: string;
-  onChange: (dateStr: string) => void;
+  onConfirm: (dateStr: string) => void;
+  onCancel: () => void;
 }) {
-  const [showModal, setShowModal] = useState(false);
   const [tempDate, setTempDate] = useState(selected);
 
-  const open = () => { setTempDate(selected); setShowModal(true); };
-  const confirm = () => { onChange(tempDate); setShowModal(false); };
+  useEffect(() => {
+    if (visible) setTempDate(selected);
+  }, [visible, selected]);
 
   return (
-    <>
-      <TouchableOpacity style={styles.dateFieldBtn} onPress={open} activeOpacity={0.7}>
-        <Text style={styles.dateFieldText}>{formatDateFromStr(selected)}</Text>
-        <Text style={styles.dateFieldArrow}>›</Text>
-      </TouchableOpacity>
-
-      <Modal visible={showModal} transparent animationType="slide">
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalSheet}>
-            <View style={styles.modalHeader}>
-              <TouchableOpacity style={styles.modalCancelBtn} onPress={() => setShowModal(false)}>
-                <Text style={styles.modalCancelIcon}>✕</Text>
-              </TouchableOpacity>
-              <Text style={styles.modalTitle}>日付を編集</Text>
-              <TouchableOpacity style={styles.modalConfirmBtn} onPress={confirm}>
-                <Text style={styles.modalConfirmIcon}>✓</Text>
-              </TouchableOpacity>
-            </View>
-            <Calendar
-              current={tempDate}
-              maxDate={TODAY}
-              minDate={MIN_DATE}
-              onDayPress={(day) => setTempDate(day.dateString)}
-              markedDates={{ [tempDate]: { selected: true, selectedColor: '#4A90E2' } }}
-              theme={{
-                todayTextColor: '#4A90E2',
-                arrowColor: '#4A90E2',
-                selectedDayBackgroundColor: '#4A90E2',
-                selectedDayTextColor: '#fff',
-                textDayFontSize: 16,
-                textMonthFontSize: 15,
-                textMonthFontWeight: '700',
-                calendarBackground: '#fff',
-              }}
-            />
+    <Modal visible={visible} transparent animationType="slide">
+      <View style={styles.modalOverlay}>
+        <View style={styles.modalSheet}>
+          <View style={styles.modalHeader}>
+            <TouchableOpacity style={styles.modalCancelBtn} onPress={onCancel}>
+              <Text style={styles.modalCancelIcon}>✕</Text>
+            </TouchableOpacity>
+            <Text style={styles.modalTitle}>日付を編集</Text>
+            <TouchableOpacity style={styles.modalConfirmBtn} onPress={() => onConfirm(tempDate)}>
+              <Text style={styles.modalConfirmIcon}>✓</Text>
+            </TouchableOpacity>
           </View>
+          <Calendar
+            current={tempDate}
+            maxDate={TODAY}
+            minDate={MIN_DATE}
+            onDayPress={(day) => setTempDate(day.dateString)}
+            markedDates={{ [tempDate]: { selected: true, selectedColor: '#4A90E2' } }}
+            theme={{
+              todayTextColor: '#4A90E2',
+              arrowColor: '#4A90E2',
+              selectedDayBackgroundColor: '#4A90E2',
+              selectedDayTextColor: '#fff',
+              textDayFontSize: 16,
+              textMonthFontSize: 15,
+              textMonthFontWeight: '700',
+              calendarBackground: '#fff',
+            }}
+          />
         </View>
-      </Modal>
-    </>
+      </View>
+    </Modal>
   );
 }
 
@@ -95,6 +92,7 @@ export default function SummaryScreen() {
 
   const [isEditing, setIsEditing] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
+  const [showDatePicker, setShowDatePicker] = useState(false);
 
   // 表示モード用の編集状態
   const [editTitle, setEditTitle] = useState('');
@@ -160,11 +158,32 @@ export default function SummaryScreen() {
 
   // ─── 表示モード ───
   if (isViewMode) {
-    const headerTitle = entry ? formatDate(entry.created_at) : '日記詳細';
+    const displayDate = isEditing ? formatDateFromStr(editDate) : (entry ? formatDate(entry.created_at) : '日記詳細');
 
     return (
       <View style={styles.screen}>
-        <Stack.Screen options={{ title: headerTitle, headerBackVisible: true, headerBackTitle: '', headerBackButtonDisplayMode: 'minimal' }} />
+        <Stack.Screen
+          options={{
+            headerTitle: () =>
+              isEditing ? (
+                <TouchableOpacity onPress={() => setShowDatePicker(true)} activeOpacity={0.7}>
+                  <Text style={styles.headerDateBtn}>{displayDate}</Text>
+                </TouchableOpacity>
+              ) : (
+                <Text style={styles.headerDateStatic}>{displayDate}</Text>
+              ),
+            headerBackVisible: !isEditing,
+            headerBackTitle: '',
+            headerBackButtonDisplayMode: 'minimal',
+          }}
+        />
+
+        <DatePickerModal
+          visible={showDatePicker}
+          selected={editDate || TODAY}
+          onConfirm={(date) => { setEditDate(date); setShowDatePicker(false); }}
+          onCancel={() => setShowDatePicker(false)}
+        />
 
         {entryLoading ? (
           <View style={styles.centered}>
@@ -199,10 +218,6 @@ export default function SummaryScreen() {
                 </TouchableOpacity>
               )}
             </View>
-
-            {isEditing && (
-              <DatePickerField selected={editDate} onChange={setEditDate} />
-            )}
 
             {isEditing ? (
               <TextInput
@@ -275,7 +290,23 @@ export default function SummaryScreen() {
   // ─── 作成モード（会話後）───
   return (
     <View style={styles.screen}>
-      <Stack.Screen options={{ title: 'サマリー', headerBackVisible: false }} />
+      <Stack.Screen
+        options={{
+          headerTitle: () => (
+            <TouchableOpacity onPress={() => setShowDatePicker(true)} activeOpacity={0.7}>
+              <Text style={styles.headerDateBtn}>{formatDateFromStr(entryDate)}</Text>
+            </TouchableOpacity>
+          ),
+          headerBackVisible: false,
+        }}
+      />
+
+      <DatePickerModal
+        visible={showDatePicker}
+        selected={entryDate}
+        onConfirm={(date) => { setEntryDate(date); setShowDatePicker(false); }}
+        onCancel={() => setShowDatePicker(false)}
+      />
 
       {isGenerating ? (
         <View style={styles.centered}>
@@ -305,8 +336,6 @@ export default function SummaryScreen() {
               </Text>
             </TouchableOpacity>
           </View>
-
-          <DatePickerField selected={entryDate} onChange={setEntryDate} />
 
           {isEditing ? (
             <TextInput
@@ -392,7 +421,9 @@ const styles = StyleSheet.create({
   content: { padding: 24, paddingBottom: 32, flexGrow: 1 },
   centered: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24 },
   generatingText: { marginTop: 16, fontSize: 16, color: '#666' },
-  headerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', marginBottom: 12, gap: 8 },
+  headerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', marginBottom: 16, gap: 8 },
+  headerDateBtn: { fontSize: 16, fontWeight: '600', color: '#4A90E2' },
+  headerDateStatic: { fontSize: 16, fontWeight: '600', color: '#1a1a1a' },
   deleteButton: {
     paddingHorizontal: 14,
     paddingVertical: 6,
@@ -401,14 +432,6 @@ const styles = StyleSheet.create({
     borderColor: '#e53e3e',
   },
   deleteButtonText: { fontSize: 13, color: '#e53e3e', fontWeight: '600' },
-  dateFieldBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 16,
-    paddingVertical: 4,
-  },
-  dateFieldText: { fontSize: 14, color: '#4A90E2', fontWeight: '600' },
-  dateFieldArrow: { fontSize: 18, color: '#4A90E2', marginLeft: 4, lineHeight: 20 },
   modalOverlay: {
     flex: 1,
     justifyContent: 'flex-end',
