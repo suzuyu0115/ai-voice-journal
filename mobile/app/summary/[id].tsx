@@ -1,6 +1,7 @@
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator, TextInput, Alert } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator, TextInput, Alert, Modal } from 'react-native';
 import { Stack, useRouter, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
+import { Calendar } from 'react-native-calendars';
 import { useSummary } from '../../src/hooks/useSummary';
 import { useDiaryEntry } from '../../src/hooks/useDiaryEntry';
 import { updateDiaryEntry, deleteDiaryEntry } from '../../src/lib/supabase';
@@ -15,6 +16,64 @@ function formatDate(iso: string) {
   return `${d.getFullYear()}年${d.getMonth() + 1}月${d.getDate()}日（${dow}）`;
 }
 
+function formatDateFromStr(dateStr: string) {
+  const d = new Date(`${dateStr}T12:00:00Z`);
+  const dow = DOW_JA[d.getUTCDay()];
+  return `${d.getUTCFullYear()}年${d.getUTCMonth() + 1}月${d.getUTCDate()}日（${dow}）`;
+}
+
+const TODAY = new Date().toISOString().slice(0, 10);
+const MIN_DATE = (() => { const d = new Date(); d.setDate(d.getDate() - 90); return d.toISOString().slice(0, 10); })();
+
+function DatePickerModal({
+  visible,
+  initialDate,
+  onConfirm,
+  onCancel,
+}: {
+  visible: boolean;
+  initialDate: string;
+  onConfirm: (dateStr: string) => void;
+  onCancel: () => void;
+}) {
+  const [tempDate, setTempDate] = useState(initialDate);
+
+  return (
+    <Modal visible={visible} transparent animationType="slide">
+      <View style={styles.modalOverlay}>
+        <View style={styles.modalSheet}>
+          <View style={styles.modalHeader}>
+            <TouchableOpacity style={styles.modalCancelBtn} onPress={onCancel}>
+              <Text style={styles.modalCancelIcon}>✕</Text>
+            </TouchableOpacity>
+            <Text style={styles.modalTitle}>日付を編集</Text>
+            <TouchableOpacity style={styles.modalConfirmBtn} onPress={() => onConfirm(tempDate)}>
+              <Text style={styles.modalConfirmIcon}>✓</Text>
+            </TouchableOpacity>
+          </View>
+          <Calendar
+            current={initialDate}
+            maxDate={TODAY}
+            minDate={MIN_DATE}
+            onDayPress={(day) => setTempDate(day.dateString)}
+            markedDates={{ [tempDate]: { selected: true, selectedColor: '#4A90E2' } }}
+            theme={{
+              todayTextColor: '#4A90E2',
+              arrowColor: '#4A90E2',
+              selectedDayBackgroundColor: '#4A90E2',
+              selectedDayTextColor: '#fff',
+              textDayFontSize: 16,
+              textMonthFontSize: 15,
+              textMonthFontWeight: '700',
+              calendarBackground: '#fff',
+            }}
+          />
+        </View>
+      </View>
+    </Modal>
+  );
+}
+
 export default function SummaryScreen() {
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -22,17 +81,19 @@ export default function SummaryScreen() {
   const isViewMode = pendingMessages.length === 0;
 
   // 表示モード: Supabase から既存エントリーを取得
-  const { entry, loading: entryLoading, error: entryError } = useDiaryEntry(isViewMode ? id : null);
+  const { entry, loading: entryLoading, error: entryError, refetch } = useDiaryEntry(isViewMode ? id : null);
 
   // 作成モード: 会話からサマリーを生成
-  const { title, body, setTitle, setBody, isGenerating, isSaving, error, saveEntry, retry } = useSummary();
+  const { title, body, entryDate, setTitle, setBody, setEntryDate, isGenerating, isSaving, error, saveEntry, retry } = useSummary();
 
   const [isEditing, setIsEditing] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
+  const [showDatePicker, setShowDatePicker] = useState(false);
 
   // 表示モード用の編集状態
   const [editTitle, setEditTitle] = useState('');
   const [editBody, setEditBody] = useState('');
+  const [editDate, setEditDate] = useState('');
   const [isSavingEdit, setIsSavingEdit] = useState(false);
 
   const handleSave = async () => {
@@ -43,9 +104,10 @@ export default function SummaryScreen() {
     }
   };
 
-  const handleEditStart = (currentTitle: string, currentBody: string) => {
+  const handleEditStart = (currentTitle: string, currentBody: string, currentDate: string) => {
     setEditTitle(currentTitle);
     setEditBody(currentBody);
+    setEditDate(currentDate.slice(0, 10));
     setIsEditing(true);
   };
 
@@ -76,8 +138,13 @@ export default function SummaryScreen() {
     if (!id) return;
     setIsSavingEdit(true);
     try {
-      await updateDiaryEntry(id, { title: editTitle, diary_text: editBody });
+      await updateDiaryEntry(id, {
+        title: editTitle,
+        diary_text: editBody,
+        created_at: `${editDate}T12:00:00.000Z`,
+      });
       setIsEditing(false);
+      refetch();
     } catch {
       Alert.alert('保存失敗', '日記の更新に失敗しました。もう一度お試しください。');
     } finally {
@@ -87,11 +154,33 @@ export default function SummaryScreen() {
 
   // ─── 表示モード ───
   if (isViewMode) {
-    const headerTitle = entry ? formatDate(entry.created_at) : '日記詳細';
+    const displayDate = isEditing ? formatDateFromStr(editDate) : (entry ? formatDate(entry.created_at) : '日記詳細');
 
     return (
       <View style={styles.screen}>
-        <Stack.Screen options={{ title: headerTitle, headerBackVisible: true, headerBackTitle: '', headerBackButtonDisplayMode: 'minimal' }} />
+        <Stack.Screen
+          options={{
+            headerTitle: () =>
+              isEditing ? (
+                <TouchableOpacity onPress={() => setShowDatePicker(true)} activeOpacity={0.7}>
+                  <Text style={styles.headerDateBtn}>{displayDate}</Text>
+                </TouchableOpacity>
+              ) : (
+                <Text style={styles.headerDateStatic}>{displayDate}</Text>
+              ),
+            headerBackVisible: !isEditing,
+            headerBackTitle: '',
+            headerBackButtonDisplayMode: 'minimal',
+          }}
+        />
+
+        <DatePickerModal
+          key={showDatePicker ? (editDate || TODAY) : 'closed'}
+          visible={showDatePicker}
+          initialDate={editDate || TODAY}
+          onConfirm={(date) => { setEditDate(date); setShowDatePicker(false); }}
+          onCancel={() => setShowDatePicker(false)}
+        />
 
         {entryLoading ? (
           <View style={styles.centered}>
@@ -109,7 +198,7 @@ export default function SummaryScreen() {
             <View style={styles.headerRow}>
               <TouchableOpacity
                 style={[styles.editToggle, isEditing && styles.editToggleActive]}
-                onPress={() => isEditing ? handleEditSave() : handleEditStart(entry.title, entry.diary_text)}
+                onPress={() => isEditing ? handleEditSave() : handleEditStart(entry.title, entry.diary_text, entry.created_at)}
                 disabled={isSavingEdit}
               >
                 {isSavingEdit ? (
@@ -198,7 +287,24 @@ export default function SummaryScreen() {
   // ─── 作成モード（会話後）───
   return (
     <View style={styles.screen}>
-      <Stack.Screen options={{ title: 'サマリー', headerBackVisible: false }} />
+      <Stack.Screen
+        options={{
+          headerTitle: () => (
+            <TouchableOpacity onPress={() => setShowDatePicker(true)} activeOpacity={0.7}>
+              <Text style={styles.headerDateBtn}>{formatDateFromStr(entryDate)}</Text>
+            </TouchableOpacity>
+          ),
+          headerBackVisible: false,
+        }}
+      />
+
+      <DatePickerModal
+        key={showDatePicker ? entryDate : 'closed'}
+        visible={showDatePicker}
+        initialDate={entryDate}
+        onConfirm={(date) => { setEntryDate(date); setShowDatePicker(false); }}
+        onCancel={() => setShowDatePicker(false)}
+      />
 
       {isGenerating ? (
         <View style={styles.centered}>
@@ -219,9 +325,6 @@ export default function SummaryScreen() {
       ) : (
         <ScrollView style={styles.container} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
           <View style={styles.headerRow}>
-            <Text style={styles.dateLabel}>
-              {new Date().toLocaleDateString('ja-JP', { year: 'numeric', month: 'long', day: 'numeric' })}
-            </Text>
             <TouchableOpacity
               style={[styles.editToggle, isEditing && styles.editToggleActive]}
               onPress={() => setIsEditing(!isEditing)}
@@ -317,6 +420,8 @@ const styles = StyleSheet.create({
   centered: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24 },
   generatingText: { marginTop: 16, fontSize: 16, color: '#666' },
   headerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', marginBottom: 16, gap: 8 },
+  headerDateBtn: { fontSize: 16, fontWeight: '600', color: '#4A90E2' },
+  headerDateStatic: { fontSize: 16, fontWeight: '600', color: '#1a1a1a' },
   deleteButton: {
     paddingHorizontal: 14,
     paddingVertical: 6,
@@ -325,7 +430,43 @@ const styles = StyleSheet.create({
     borderColor: '#e53e3e',
   },
   deleteButtonText: { fontSize: 13, color: '#e53e3e', fontWeight: '600' },
-  dateLabel: { fontSize: 13, color: '#999' },
+  modalOverlay: {
+    flex: 1,
+    justifyContent: 'flex-end',
+    backgroundColor: 'rgba(0,0,0,0.3)',
+  },
+  modalSheet: {
+    backgroundColor: '#fff',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    paddingBottom: 32,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+  },
+  modalTitle: { fontSize: 16, fontWeight: '700', color: '#1a1a1a' },
+  modalCancelBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#E5E5EA',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  modalCancelIcon: { fontSize: 15, color: '#555', fontWeight: '600' },
+  modalConfirmBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#4A90E2',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  modalConfirmIcon: { fontSize: 17, color: '#fff', fontWeight: '700' },
   editToggle: {
     paddingHorizontal: 14,
     paddingVertical: 6,
