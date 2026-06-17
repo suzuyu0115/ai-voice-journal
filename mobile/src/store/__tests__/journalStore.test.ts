@@ -1,7 +1,7 @@
 import { useJournalStore } from '../journalStore';
 
 beforeEach(() => {
-  useJournalStore.setState({ messages: [], pendingMessages: [], entries: [] });
+  useJournalStore.setState({ messages: [], pendingMessages: [], entries: [], targetDate: null });
 });
 
 describe('journalStore', () => {
@@ -44,6 +44,19 @@ describe('journalStore', () => {
       useJournalStore.getState().setPendingMessages([{ role: 'user', text: 'テスト' }]);
       useJournalStore.getState().setPendingMessages([]);
       expect(useJournalStore.getState().pendingMessages).toHaveLength(0);
+    });
+  });
+
+  describe('targetDate', () => {
+    it('setTargetDate で targetDate が設定される', () => {
+      useJournalStore.getState().setTargetDate('2026-06-15');
+      expect(useJournalStore.getState().targetDate).toBe('2026-06-15');
+    });
+
+    it('clearPendingMessages で targetDate も null になる', () => {
+      useJournalStore.getState().setTargetDate('2026-06-15');
+      useJournalStore.getState().clearPendingMessages();
+      expect(useJournalStore.getState().targetDate).toBeNull();
     });
   });
 

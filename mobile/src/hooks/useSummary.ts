@@ -18,10 +18,10 @@ type UseSummaryReturn = {
 };
 
 export function useSummary(): UseSummaryReturn {
-  const { pendingMessages, addEntry, clearPendingMessages } = useJournalStore();
+  const { pendingMessages, addEntry, clearPendingMessages, targetDate } = useJournalStore();
   const [title, setTitle] = useState('');
   const [body, setBody] = useState('');
-  const [entryDate, setEntryDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [entryDate, setEntryDate] = useState(() => targetDate ?? new Date().toISOString().slice(0, 10));
   const [isGenerating, setIsGenerating] = useState(() => pendingMessages.length > 0);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
