@@ -37,7 +37,7 @@ function renderSummaryHook() {
 
 beforeEach(() => {
   jest.clearAllMocks();
-  act(() => { useJournalStore.setState({ pendingMessages: [], messages: [], entries: [] }); });
+  act(() => { useJournalStore.setState({ pendingMessages: [], messages: [], entries: [], targetDate: null }); });
 });
 
 afterEach(() => {
@@ -48,6 +48,51 @@ afterEach(() => {
 });
 
 describe('useSummary', () => {
+  it('entryDate のデフォルトは今日の日付', () => {
+    const today = new Date().toISOString().slice(0, 10);
+    const { result } = renderSummaryHook();
+    expect(result.current.entryDate).toBe(today);
+  });
+
+  it('targetDate がある場合、entryDate の初期値は targetDate になる', () => {
+    act(() => { useJournalStore.setState({ targetDate: '2026-06-15' }); });
+    const { result } = renderSummaryHook();
+    expect(result.current.entryDate).toBe('2026-06-15');
+  });
+
+  it('setEntryDate で日付が変更される', () => {
+    const { result } = renderSummaryHook();
+    act(() => { result.current.setEntryDate('2026-06-16'); });
+    expect(result.current.entryDate).toBe('2026-06-16');
+  });
+
+  it('saveEntry が insertDiaryEntry を created_at 付きで呼ぶ', async () => {
+    useJournalStore.setState({ pendingMessages });
+    mockGenerateSummary.mockResolvedValue({ title: 'テストタイトル', body: 'テスト本文' });
+    mockInsertDiaryEntry.mockResolvedValue({ id: 'abc123', created_at: '2026-06-18T12:00:00Z' });
+
+    const { result } = renderSummaryHook();
+    await act(async () => {});
+    await act(async () => { await result.current.saveEntry(); });
+
+    expect(mockInsertDiaryEntry).toHaveBeenCalledWith(
+      expect.objectContaining({ created_at: expect.stringMatching(/T12:00:00\.000Z$/) })
+    );
+  });
+
+  it('saveEntry 後に clearPendingMessages が呼ばれ targetDate も null になる', async () => {
+    act(() => { useJournalStore.setState({ pendingMessages, targetDate: '2026-06-15' }); });
+    mockGenerateSummary.mockResolvedValue({ title: 'テストタイトル', body: 'テスト本文' });
+    mockInsertDiaryEntry.mockResolvedValue({ id: 'abc123', created_at: '2026-06-15T12:00:00Z' });
+
+    const { result } = renderSummaryHook();
+    await act(async () => {});
+    await act(async () => { await result.current.saveEntry(); });
+
+    expect(useJournalStore.getState().targetDate).toBeNull();
+    expect(useJournalStore.getState().pendingMessages).toHaveLength(0);
+  });
+
   it('pendingMessages が空の場合、isGenerating は false で始まる', () => {
     const { result } = renderSummaryHook();
     expect(result.current.isGenerating).toBe(false);

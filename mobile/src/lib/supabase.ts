@@ -36,7 +36,7 @@ export const supabase = createClient(
 );
 
 export async function insertDiaryEntry(
-  entry: Omit<DiaryEntry, 'id' | 'created_at'>
+  entry: Omit<DiaryEntry, 'id' | 'created_at'> & { created_at?: string }
 ): Promise<DiaryEntry> {
   const { data, error } = await supabase
     .from('diary_entries')

@@ -6,8 +6,10 @@ import { useJournalStore } from '../store/journalStore';
 type UseSummaryReturn = {
   title: string;
   body: string;
+  entryDate: string;
   setTitle: (title: string) => void;
   setBody: (body: string) => void;
+  setEntryDate: (date: string) => void;
   isGenerating: boolean;
   isSaving: boolean;
   error: string | null;
@@ -16,9 +18,10 @@ type UseSummaryReturn = {
 };
 
 export function useSummary(): UseSummaryReturn {
-  const { pendingMessages, addEntry, clearPendingMessages } = useJournalStore();
+  const { pendingMessages, addEntry, clearPendingMessages, targetDate } = useJournalStore();
   const [title, setTitle] = useState('');
   const [body, setBody] = useState('');
+  const [entryDate, setEntryDate] = useState(() => targetDate ?? new Date().toISOString().slice(0, 10));
   const [isGenerating, setIsGenerating] = useState(() => pendingMessages.length > 0);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -58,6 +61,7 @@ export function useSummary(): UseSummaryReturn {
         })),
         diary_text: body,
         tags: [],
+        created_at: `${entryDate}T12:00:00.000Z`,
       });
 
       addEntry({
@@ -77,7 +81,7 @@ export function useSummary(): UseSummaryReturn {
     }
   };
 
-  return { title, body, setTitle, setBody, isGenerating, isSaving, error, saveEntry, retry };
+  return { title, body, entryDate, setTitle, setBody, setEntryDate, isGenerating, isSaving, error, saveEntry, retry };
 }
 
 export function friendlyError(e: unknown): string {
