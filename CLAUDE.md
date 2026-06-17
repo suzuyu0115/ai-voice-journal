@@ -17,9 +17,7 @@ ai-voice-journal/
 | レイヤー | 技術 |
 |---------|------|
 | モバイル | React Native + Expo 56 (TypeScript) |
-| STT | `expo-speech-recognition`（iOS native、旧 `@react-native-voice/voice` は非推奨のため変更） |
-| AI 会話 | Gemini API `gemini-2.5-flash`（テキストのみ） |
-| TTS | `expo-speech` |
+| AI 会話・STT・TTS | Gemini Live API `gemini-2.5-flash-preview-native-audio`（リアルタイム双方向音声）|
 | 状態管理 | Zustand |
 | DB / Auth | Supabase |
 | ナビゲーション | expo-router + `@expo/vector-icons`（タブアイコン）|
@@ -71,33 +69,33 @@ app/
 ## 会話フロー（コア機能）
 
 ```
-マイクボタンをタップ → STT開始（リアルタイム文字起こし表示）
-もう一度タップ       → 文字起こし結果がテキスト入力欄に入る
-内容確認して「送信」 → Gemini API にテキスト送信（ストリーミング）
-                     → expo-speech で AI 返答を音声再生
-最大3ラリーで自動終了 or 「まとめる」ボタン → サマリー画面へ遷移
+マイクボタンをタップ → Gemini Live WebSocket 接続、リアルタイム音声入出力開始
+会話中             → AI の発話と文字起こしがリアルタイムで画面に表示される
+自動終了 or 「まとめる」ボタン → WebSocket 切断、pendingMessages を保存
+                              → サマリー画面へ遷移
 ```
 
 ### 会話終了ロジック
 
-- AI が `[END]` マーカーを返したとき → 自然な締めくくりと判断して遷移
-- ラリー数が `MAX_RALLIES (= 3)` に達したとき → 最終ターン専用プロンプトで締めくくりを強制
-- どちらの場合も遷移前に `TRANSITION_SUFFIX`（「では、話してもらった内容をもとに日記を作成しますね。ありがとうございました。」）を末尾に付与
+- `turnComplete` ごとに `rallyCountRef` をインクリメント
+- `MAX_RALLIES (= 3)` 到達時 → ラップアップ指示テキストを Gemini に送信（`isWrappingUpRef` で二重送信防止）
+- AI が `[END]` マーカーを返したとき → `finishConversation()` でサマリー画面へ遷移
+- 「まとめる」ボタン押下時も即座に `finishConversation()`
 
 ## ディレクトリ規約
 
 ```
 mobile/src/
-├── hooks/       # useVoiceRecorder.ts, useJournalChat.ts, useSummary.ts, useCalendarEntries.ts
+├── hooks/       # useGeminiLive.ts, useAuth.ts, useSummary.ts, useCalendarEntries.ts, useDiaryEntry.ts, useDiaryList.ts
 ├── lib/         # gemini.ts, supabase.ts（APIクライアント）
 ├── store/       # journalStore.ts（Zustand）
-└── components/  # RecordButton, ChatBubble, BottomTabBar
+└── components/  # BottomTabBar
 ```
 
 ## 注意事項
 
 - `.env` は絶対にコミットしない（`.gitignore` で除外済み）
-- Expo Go では動作しない（`expo-speech-recognition` がネイティブモジュールのため）
+- Expo Go では動作しない（Gemini Live がネイティブ Audio API を使うため）
 - `api/` は MVP では触らない
 - 実装はチケット（GitHub Issues）単位で進める
 
@@ -169,29 +167,42 @@ gh pr create \
 
 ---
 
-## 現在の実装状況（2026-06-14時点）
+## 現在の実装状況（2026-06-18時点）
 
-### 完了済み
+### 完了済み（main にマージ済み）
 - Expo SDK 56 プロジェクト作成（`mobile/`）
-- 全パッケージインストール済み: expo-router, expo-sqlite, expo-av, expo-haptics, async-storage, zustand, @google/genai, expo-speech, expo-speech-recognition, @supabase/supabase-js, @expo/vector-icons, react-native-calendars
-- app.json 設定済み（scheme, マイク権限, expo-speech-recognition plugin）
+- 全パッケージインストール済み: expo-router, expo-av, expo-haptics, async-storage, zustand, @google/genai, @supabase/supabase-js, @expo/vector-icons, react-native-calendars
+- app.json 設定済み（scheme, マイク権限）
 - GitHub リポジトリ作成・push済み
 - `src/lib/gemini.ts`・`src/lib/supabase.ts`・`src/store/journalStore.ts` 作成済み
 - **#19** フッターナビゲーションバー（4タブ: ホーム・会話・カレンダー・設定）
-- **#16** 会話機能フル実装（STT・Gemini ストリーミング・TTS・3ラリー終了・[END]検知）
 - **#8** サマリー画面実装（Gemini によるタイトル+本文生成・編集モード・Supabase 保存・会話履歴表示）
 - **#21** カレンダー画面実装（月間カレンダー・日記エントリープレビュー）
 - **#31** 設定画面実装（iOS Settings スタイル UI・アプリバージョン表示・各機能プレースホルダー）
 - **#30** カレンダーから日記詳細表示（`summary/[id].tsx` を表示モード／作成モードの2モードに対応）
+- **#34** 日記詳細編集・保存機能（タイトル・本文のインライン編集）
+- **#35** 日記詳細ヘッダー UI 改善（日付表示・戻るボタン）
+- **#37** 日記詳細削除ボタン（確認ダイアログ付き）
+- **#40** 開発用シードデータ投入スクリプト（`mobile/scripts/seed.ts`）
+- **#9** ホーム画面を日記一覧（ジャーナルスタイル）に刷新（Supabase 取得・連続記録ストリーク、PR #44）
+- **#42** 会話機能を Gemini Live API に刷新（リアルタイム双方向音声・`useGeminiLive.ts`、PR #43）
+
+### オープン PR（未マージ）
+- **PR #51** (#50): カレンダー画面の選択日から日記を追加する FAB マイクボタン、`targetDate` を Zustand store に追加
+- **PR #52** (#45 + #47 + #49): 日記日付編集（今日/昨日/一昨日チップ + カレンダーモーダル）、匿名認証
 
 ### コードの状態
-- `app/(tabs)/` 配下に4画面（index, conversation, calendar, settings）。settings は iOS Settings スタイルで実装済み（バージョン表示・通知・AI設定・データ削除の4セクション）
-- `app/summary/[id].tsx` 実装済み。**2モード対応**: 表示モード（カレンダーから・`useDiaryEntry` で Supabase 取得）／作成モード（会話後・生成・編集・保存）
-- `src/hooks/useVoiceRecorder.ts`・`src/hooks/useJournalChat.ts`・`src/hooks/useSummary.ts`・`src/hooks/useCalendarEntries.ts`・`src/hooks/useDiaryEntry.ts` 実装済み
-- `src/components/RecordButton.tsx`・`src/components/ChatBubble.tsx`・`src/components/BottomTabBar.tsx` 実装済み
-- `src/lib/gemini.ts`: `generateSummary` 追加（`{ title, body }` を JSON で返す）
-- `src/lib/supabase.ts`: `DiaryEntry` 型（title カラムあり、emotion_score なし）、`insertDiaryEntry` ヘルパー実装済み
-- `src/store/journalStore.ts`: `JournalEntry { id, title, body, createdAt }`、`pendingMessages` state 追加済み
+- `app/(tabs)/conversation.tsx`: Gemini Live UI に全面刷新（マイクボタン・ステータス表示・会話バブル）
+- `app/(tabs)/index.tsx`: 日記一覧（ジャーナルスタイル）、連続記録ストリーク表示
+- `app/summary/[id].tsx`: **2モード対応**（表示モード／作成モード）。PR #51/#52 マージ後はヘッダー日付タップでカレンダーモーダルに変更予定
+- `src/hooks/useGeminiLive.ts`: Gemini Live WebSocket、isWrappingUpRef パターンで会話終了管理
+- `src/hooks/useSummary.ts`: `entryDate`/`setEntryDate` 追加（PR #51 で `targetDate` から初期化）
+- `src/hooks/useDiaryList.ts`: ホーム画面用日記一覧取得（Supabase、フォーカス時リフレッシュ）
+- `src/hooks/useDiaryEntry.ts`: 日記詳細取得・削除
+- `src/hooks/useAuth.ts`: Supabase 匿名認証フック（PR #52 でマージ予定）
+- `src/lib/supabase.ts`: `updateDiaryEntry`・`deleteDiaryEntry` 追加、`insertDiaryEntry` に `created_at` オプション追加
+- `src/store/journalStore.ts`: `pendingMessages` 管理。PR #51 で `targetDate`/`setTargetDate` 追加予定
+- `src/components/BottomTabBar.tsx` のみ残存（`RecordButton`・`ChatBubble` は #42 で削除済み）
 - 実機ビルド確認済み（bundleIdentifier: com.suzuyu0115.aivoicejournal、Personal Team 署名）
 
 ### Supabase diary_entries テーブル構成
@@ -204,10 +215,10 @@ gh pr create \
 | diary_text | text | AI生成本文 |
 | tags | text[] | |
 
-RLS: INSERT TO anon WITH CHECK (true) を設定済み（MVP 用）
+RLS: INSERT TO anon WITH CHECK (true)（MVP 用）→ PR #52 マージ後に `user_id` カラム追加・RLS 厳格化予定
 
 ### 次のステップ
-- **#9** 日記一覧・Supabase 保存・ストリーク
+- PR #51 (#50)・PR #52 (#45/#47/#49) をユーザーがレビュー・マージ → MVP 完成（締め切り 2026-06-19）
 
 ---
 
@@ -229,14 +240,23 @@ RLS: INSERT TO anon WITH CHECK (true) を設定済み（MVP 用）
 | #6 | TTS実装 | feature | 完了（#16に統合）|
 | #7 | 会話UI実装 | feature | 完了（#16に統合）|
 | #8 | サマリー生成・タイトル+本文・Supabase保存 | feature | 完了（PR #24）|
-| #9 | 日記一覧・Supabase保存・ストリーク | feature | 未着手 |
-| #16 | 会話機能フル実装（STT・Gemini・TTS・UI）| feature | 完了 |
+| #9 | 日記一覧・Supabase保存・ストリーク | feature | 完了（PR #44）|
+| #16 | 会話機能フル実装（STT・Gemini・TTS・UI）| feature | 完了（#42 で置き換え）|
 | #19 | フッターナビゲーションバー実装 | feature | 完了 |
 | #21 | カレンダー画面実装（GitHub草スタイル→日記プレビュー）| feature | 完了 |
 | #30 | カレンダーから日記詳細画面にアクセス | fix | 完了（PR #32）|
-| #31 | 設定画面実装（iOS Settings スタイル UI）| feature | 完了 |
+| #31 | 設定画面実装（iOS Settings スタイル UI）| feature | 完了（PR #27）|
+| #34 | 日記詳細画面に編集・保存機能を追加 | fix | 完了 |
+| #35 | 日記詳細ヘッダー UI 改善（日付表示・戻るボタン） | fix | 完了（PR #36）|
+| #37 | 日記詳細画面に削除ボタンを実装 | feature | 完了（PR #38）|
+| #40 | 開発用シードデータ投入スクリプト | chore | 完了（PR #41）|
+| #42 | Gemini Live API による双方向音声会話に刷新 | feature | 完了（PR #43）|
+| #45 | 日記の日付を今日/昨日/一昨日から選択 | feature | PR #52（レビュー待ち）|
+| #47 | ヘッダー日付タップでカレンダーピッカー | feature | PR #52（レビュー待ち）|
+| #49 | 匿名認証でユーザーデータを分離 | feature | PR #52（レビュー待ち）|
+| #50 | カレンダー画面から日記を追加（FAB） | feature | PR #51（レビュー待ち）|
 
 ## 推奨着手順序
 
-1. ~~#1〜#7, #16, #19, #8, #21, #30, #31~~ 完了済み
-2. **#9** 日記一覧・Supabase 保存・ストリーク
+1. ~~#1〜#9, #16, #19, #21, #30, #31, #34, #35, #37, #40, #42~~ 完了済み
+2. PR #51 (#50) と PR #52 (#45/#47/#49) をマージ → MVP 完成
