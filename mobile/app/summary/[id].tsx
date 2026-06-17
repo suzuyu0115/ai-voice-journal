@@ -18,7 +18,7 @@ function formatDate(iso: string) {
 export default function SummaryScreen() {
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { pendingMessages } = useJournalStore();
+  const { pendingMessages, clearPendingMessages } = useJournalStore();
   const isViewMode = pendingMessages.length === 0;
 
   // 表示モード: Supabase から既存エントリーを取得
@@ -38,6 +38,7 @@ export default function SummaryScreen() {
   const handleSave = async () => {
     const savedId = await saveEntry();
     if (savedId !== null) {
+      clearPendingMessages();
       router.replace('/');
     }
   };
@@ -298,7 +299,7 @@ export default function SummaryScreen() {
             )}
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.discardButton} onPress={() => router.replace('/')}>
+          <TouchableOpacity style={styles.discardButton} onPress={() => { clearPendingMessages(); router.replace('/'); }}>
             <Text style={styles.discardText}>保存せずに戻る</Text>
           </TouchableOpacity>
         </ScrollView>
