@@ -67,6 +67,46 @@ function calcStreak(entries: DiaryListEntry[]): number {
   return streak;
 }
 
+type Milestone = { emoji: string; message: string; color: string };
+
+function getMilestone(streak: number): Milestone {
+  if (streak >= 365) return { emoji: '👑', message: '1年達成！伝説だ',     color: '#92400E' };
+  if (streak >= 100) return { emoji: '💎', message: '100日突破！最強',     color: '#6366F1' };
+  if (streak >= 30)  return { emoji: '🏆', message: '1ヶ月達成！',         color: '#EC4899' };
+  if (streak >= 14)  return { emoji: '⚡', message: '2週間突破！',         color: '#8B5CF6' };
+  if (streak >= 7)   return { emoji: '🌟', message: '1週間達成！',         color: '#F59E0B' };
+  if (streak >= 3)   return { emoji: '💪', message: '3日坊主じゃない！',   color: '#F97316' };
+  if (streak >= 2)   return { emoji: '✨', message: 'いい調子！',           color: '#F97316' };
+  return               { emoji: '🌱', message: '記録スタート！',           color: '#06B6D4' };
+}
+
+function StreakCard({ streak }: { streak: number }) {
+  const { emoji, message, color } = getMilestone(streak);
+  return (
+    <View style={[sc.card, { backgroundColor: color, shadowColor: color }]}>
+      <View style={sc.bgCircle} />
+
+      <View style={sc.inner}>
+        {/* 左：炎 + 数字 */}
+        <Text style={sc.flame}>🔥</Text>
+        <View style={sc.numBlock}>
+          <Text style={sc.number}>{streak}</Text>
+          <Text style={sc.unit}>日連続</Text>
+        </View>
+
+        {/* 区切り */}
+        <View style={sc.divider} />
+
+        {/* 右：ミッションバッジ */}
+        <View style={sc.badgeBlock}>
+          <Text style={sc.badgeEmoji}>{emoji}</Text>
+          <Text style={sc.badgeText}>{message}</Text>
+        </View>
+      </View>
+    </View>
+  );
+}
+
 function EntryCard({ entry, onPress }: { entry: DiaryListEntry; onPress: () => void }) {
   return (
     <TouchableOpacity style={styles.card} onPress={onPress} activeOpacity={0.7}>
@@ -107,11 +147,8 @@ export default function HomeScreen() {
 
   return (
     <SafeAreaView style={styles.screen} edges={['left', 'right']}>
-      {streak >= 2 && (
-        <View style={styles.streakBanner}>
-          <Text style={styles.streakText}>🔥 {streak}日連続記録中</Text>
-        </View>
-      )}
+      {/* 固定ストリークカード */}
+      {streak >= 1 && <StreakCard streak={streak} />}
 
       {error && (
         <View style={styles.errorBanner}>
@@ -163,20 +200,88 @@ export default function HomeScreen() {
   );
 }
 
+// ── StreakCard スタイル ──────────────────────────────────────────
+const sc = StyleSheet.create({
+  card: {
+    marginHorizontal: 16,
+    marginTop: 10,
+    marginBottom: 6,
+    borderRadius: 20,
+    backgroundColor: '#F97316',
+    overflow: 'hidden',
+    shadowColor: '#F97316',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.4,
+    shadowRadius: 14,
+    elevation: 8,
+  },
+  bgCircle: {
+    position: 'absolute',
+    width: 180,
+    height: 180,
+    borderRadius: 90,
+    backgroundColor: 'rgba(255, 255, 255, 0.07)',
+    top: -70,
+    right: -40,
+  },
+  inner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 14,
+    paddingHorizontal: 20,
+    gap: 4,
+  },
+  flame: {
+    fontSize: 32,
+    lineHeight: 38,
+    marginRight: 2,
+  },
+  numBlock: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    gap: 4,
+  },
+  number: {
+    fontSize: 44,
+    fontWeight: '900',
+    color: '#fff',
+    lineHeight: 50,
+    letterSpacing: -1,
+  },
+  unit: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: 'rgba(255, 255, 255, 0.9)',
+    marginBottom: 2,
+  },
+  divider: {
+    width: 1,
+    height: 36,
+    backgroundColor: 'rgba(255,255,255,0.3)',
+    marginHorizontal: 14,
+  },
+  badgeBlock: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  badgeEmoji: {
+    fontSize: 20,
+    lineHeight: 24,
+  },
+  badgeText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#fff',
+    flexShrink: 1,
+  },
+});
+
+// ── 共通スタイル ─────────────────────────────────────────────────
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: '#F2F2F7' },
   centered: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 32 },
-
-  streakBanner: {
-    marginHorizontal: 16,
-    marginTop: 8,
-    paddingVertical: 8,
-    paddingHorizontal: 14,
-    backgroundColor: '#FFF8E7',
-    borderRadius: 10,
-    alignSelf: 'flex-start',
-  },
-  streakText: { fontSize: 13, fontWeight: '600', color: '#D97706' },
 
   errorBanner: {
     margin: 16,
