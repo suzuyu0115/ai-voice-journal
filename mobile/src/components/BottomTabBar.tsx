@@ -2,6 +2,7 @@ import { View, TouchableOpacity, Text, StyleSheet } from 'react-native';
 import { useRouter, usePathname } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { COLORS } from '../constants/theme';
 
 type IoniconsName = React.ComponentProps<typeof Ionicons>['name'];
 
@@ -30,7 +31,7 @@ export function BottomTabBar() {
             <Ionicons
               name={isActive ? tab.active : tab.inactive}
               size={24}
-              color={isActive ? '#4A90E2' : '#999'}
+              color={isActive ? COLORS.primary : COLORS.textTertiary}
             />
             <Text style={[styles.label, isActive && styles.labelActive]}>{tab.label}</Text>
           </TouchableOpacity>
@@ -43,9 +44,9 @@ export function BottomTabBar() {
 const styles = StyleSheet.create({
   container: {
     flexDirection: 'row',
-    backgroundColor: '#fff',
+    backgroundColor: COLORS.surface,
     borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: '#eee',
+    borderTopColor: COLORS.border,
     paddingTop: 8,
   },
   tab: {
@@ -53,6 +54,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 2,
   },
-  label: { fontSize: 10, color: '#999' },
-  labelActive: { color: '#4A90E2' },
+  label: { fontSize: 10, fontWeight: '600', color: COLORS.textTertiary },
+  labelActive: { color: COLORS.primary },
 });

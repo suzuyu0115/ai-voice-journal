@@ -1,13 +1,9 @@
 import { Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import Constants from 'expo-constants';
+import { COLORS, RADIUS } from '../../src/constants/theme';
 
 type IoniconsName = React.ComponentProps<typeof Ionicons>['name'];
-
-const PRIMARY = '#4A90E2';
-const DESTRUCTIVE = '#e53e3e';
-const TEXT = '#1a1a1a';
-const SUB = '#888';
 
 function placeholder() {
   Alert.alert('準備中', 'この機能は近日実装予定です。');
@@ -32,10 +28,12 @@ function Row({
 }) {
   return (
     <TouchableOpacity style={styles.row} onPress={onPress} activeOpacity={0.7} disabled={!onPress}>
-      <Ionicons name={icon} size={20} color={destructive ? DESTRUCTIVE : PRIMARY} style={styles.rowIcon} />
+      <View style={[styles.rowIconWrapper, destructive && styles.rowIconWrapperDestructive]}>
+        <Ionicons name={icon} size={18} color={destructive ? COLORS.error : COLORS.primary} />
+      </View>
       <Text style={[styles.rowLabel, destructive && styles.destructiveLabel]}>{label}</Text>
       {value !== undefined && <Text style={styles.rowValue}>{value}</Text>}
-      <Ionicons name="chevron-forward" size={16} color={SUB} />
+      {onPress && <Ionicons name="chevron-forward" size={15} color={COLORS.textTertiary} />}
     </TouchableOpacity>
   );
 }
@@ -71,23 +69,23 @@ export default function SettingsScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F2F2F7' },
-  content: { paddingVertical: 16 },
+  container: { flex: 1, backgroundColor: COLORS.background },
+  content: { paddingVertical: 16, paddingBottom: 40 },
 
   sectionHeader: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: SUB,
+    fontSize: 11,
+    fontWeight: '700',
+    color: COLORS.textSecondary,
     textTransform: 'uppercase',
-    letterSpacing: 0.5,
+    letterSpacing: 0.8,
     paddingHorizontal: 16,
-    paddingTop: 20,
+    paddingTop: 24,
     paddingBottom: 6,
   },
 
   section: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
+    backgroundColor: COLORS.surface,
+    borderRadius: RADIUS.md,
     marginHorizontal: 16,
     overflow: 'hidden',
   },
@@ -97,16 +95,27 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 13,
     paddingHorizontal: 16,
-    minHeight: 48,
+    minHeight: 52,
+    gap: 12,
   },
-  rowIcon: { marginRight: 12 },
-  rowLabel: { flex: 1, fontSize: 16, color: TEXT },
-  destructiveLabel: { color: DESTRUCTIVE },
-  rowValue: { fontSize: 16, color: SUB, marginRight: 6 },
+  rowIconWrapper: {
+    width: 32,
+    height: 32,
+    borderRadius: 8,
+    backgroundColor: COLORS.surfaceAlt,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  rowIconWrapperDestructive: {
+    backgroundColor: '#FEE2E2',
+  },
+  rowLabel: { flex: 1, fontSize: 16, color: COLORS.textPrimary },
+  destructiveLabel: { color: COLORS.error },
+  rowValue: { fontSize: 15, color: COLORS.textSecondary, marginRight: 4 },
 
   divider: {
     height: StyleSheet.hairlineWidth,
-    backgroundColor: '#E5E5EA',
-    marginLeft: 48,
+    backgroundColor: COLORS.border,
+    marginLeft: 60,
   },
 });
