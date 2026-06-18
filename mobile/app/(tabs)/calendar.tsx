@@ -12,6 +12,7 @@ import { Calendar, LocaleConfig, type CalendarProps, type DateData } from 'react
 import { router, useFocusEffect } from 'expo-router';
 import { useCalendarEntries, type CalendarEntry } from '../../src/hooks/useCalendarEntries';
 import { useJournalStore } from '../../src/store/journalStore';
+import { COLORS, SHADOWS, RADIUS } from '../../src/constants/theme';
 
 LocaleConfig.locales['ja'] = {
   monthNames: ['1月', '2月', '3月', '4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月', '12月'],
@@ -24,10 +25,9 @@ LocaleConfig.defaultLocale = 'ja';
 
 type MarkedDates = NonNullable<CalendarProps['markedDates']>;
 
-const ENTRY_COLOR = '#40c463';
-const SUNDAY_COLOR = '#e53e3e';
-const SATURDAY_COLOR = '#3182ce';
-const SELECTED_COLOR = '#4A90E2';
+const ENTRY_COLOR = '#34D399';
+const SUNDAY_COLOR = '#EF4444';
+const SATURDAY_COLOR = '#3B82F6';
 const DOW_JA = ['日', '月', '火', '水', '木', '金', '土'] as const;
 
 function toMonthKey(year: number, month: number) {
@@ -63,25 +63,21 @@ function formatBanner(dateStr: string) {
 
 function EntryCard({ entry, onPress }: { entry: CalendarEntry; onPress: () => void }) {
   const d = new Date(entry.created_at);
-  const dow = DOW_JA[d.getDay()];
-  const day = d.getDate();
   const time = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
-  const isSunday = d.getDay() === 0;
-  const isSaturday = d.getDay() === 6;
-  const dowColor = isSunday ? SUNDAY_COLOR : isSaturday ? SATURDAY_COLOR : SELECTED_COLOR;
 
   return (
     <TouchableOpacity style={styles.card} onPress={onPress} activeOpacity={0.75}>
-      <View style={styles.cardLeft}>
-        <Text style={[styles.cardDow, { color: dowColor }]}>{dow}</Text>
-        <Text style={[styles.cardDay, { color: dowColor }]}>{day}</Text>
-        <Text style={[styles.cardTime, { color: dowColor }]}>{time}</Text>
+      <View style={styles.cardTimeCol}>
+        <Ionicons name="time-outline" size={13} color={COLORS.textTertiary} />
+        <Text style={styles.cardTime}>{time}</Text>
       </View>
+      <View style={styles.cardDivider} />
       <View style={styles.cardRight}>
         <Text style={styles.cardBody} numberOfLines={3}>
           {entry.diary_text || '（内容なし）'}
         </Text>
       </View>
+      <Ionicons name="chevron-forward" size={14} color={COLORS.textTertiary} />
     </TouchableOpacity>
   );
 }
@@ -117,8 +113,11 @@ export default function CalendarScreen() {
   const entryMarks = Object.keys(entriesByDate).reduce<MarkedDates>((acc, date) => {
     acc[date] = {
       customStyles: {
-        container: { backgroundColor: ENTRY_COLOR, borderRadius: 4 },
-        text: { color: '#fff', fontWeight: '600' },
+        container: {
+          backgroundColor: ENTRY_COLOR,
+          borderRadius: 6,
+        },
+        text: { color: '#fff', fontWeight: '700' },
       },
     };
     return acc;
@@ -129,14 +128,14 @@ export default function CalendarScreen() {
         [selectedDate]: {
           customStyles: {
             container: {
-              backgroundColor: SELECTED_COLOR,
+              backgroundColor: COLORS.primary,
               borderRadius: 20,
               width: 34,
               height: 34,
               alignItems: 'center',
               justifyContent: 'center',
             },
-            text: { color: '#fff', fontWeight: '600' },
+            text: { color: '#fff', fontWeight: '700' },
           },
         },
       }
@@ -159,7 +158,7 @@ export default function CalendarScreen() {
       {/* カスタムヘッダー */}
       <View style={styles.headerRow}>
         <TouchableOpacity onPress={prevMonth} style={styles.arrowBtn} hitSlop={8}>
-          <Ionicons name="chevron-back" size={22} color={SELECTED_COLOR} />
+          <Ionicons name="chevron-back" size={22} color={COLORS.primary} />
         </TouchableOpacity>
         <View style={styles.monthPill}>
           <Text style={styles.monthPillText}>
@@ -167,15 +166,14 @@ export default function CalendarScreen() {
           </Text>
         </View>
         <TouchableOpacity onPress={nextMonth} style={styles.arrowBtn} hitSlop={8}>
-          <Ionicons name="chevron-forward" size={22} color={SELECTED_COLOR} />
+          <Ionicons name="chevron-forward" size={22} color={COLORS.primary} />
         </TouchableOpacity>
       </View>
 
       {loading ? (
-        <ActivityIndicator size="large" color={ENTRY_COLOR} style={styles.loader} />
+        <ActivityIndicator size="large" color={COLORS.primary} style={styles.loader} />
       ) : (
         <>
-          {/* Calendar（ヘッダーを非表示、曜日行 + 日付グリッドのみ） */}
           <Calendar
             key={displayMonthStr}
             current={`${displayMonthStr}-01`}
@@ -186,15 +184,15 @@ export default function CalendarScreen() {
             onDayPress={handleDayPress}
             theme={
               {
-                textSectionTitleColor: '#555',
+                textSectionTitleColor: COLORS.textSecondary,
                 'stylesheet.calendar.header': {
                   header: { height: 0, overflow: 'hidden', marginTop: 0 },
                   week: {
                     marginTop: 0,
-                    paddingVertical: 8,
+                    paddingVertical: 10,
                     flexDirection: 'row',
                     justifyContent: 'space-around',
-                    backgroundColor: '#FFF9C4',
+                    backgroundColor: COLORS.background,
                   },
                 },
               } as object
@@ -203,13 +201,22 @@ export default function CalendarScreen() {
 
           {/* 選択日バナー */}
           <View style={styles.banner}>
+            <Ionicons name="calendar-outline" size={13} color={COLORS.textSecondary} />
             <Text style={styles.bannerText}>{formatBanner(selectedDate)}</Text>
+            {selectedEntries.length > 0 && (
+              <View style={styles.entryCountBadge}>
+                <Text style={styles.entryCountText}>{selectedEntries.length}件</Text>
+              </View>
+            )}
           </View>
 
-          {/* エントリーリスト */}
           <ScrollView style={styles.list} contentContainerStyle={styles.listContent}>
             {selectedEntries.length === 0 ? (
-              <Text style={styles.emptyText}>この日は記録がありません</Text>
+              <View style={styles.emptyDay}>
+                <Ionicons name="journal-outline" size={28} color={COLORS.textTertiary} />
+                <Text style={styles.emptyDayText}>この日は記録がありません</Text>
+                <Text style={styles.emptyDayHint}>右下のボタンで日記を追加できます</Text>
+              </View>
             ) : (
               selectedEntries.map((entry) => (
                 <EntryCard
@@ -231,17 +238,17 @@ export default function CalendarScreen() {
         }}
         accessibilityLabel="この日の日記を作成"
       >
-        <Ionicons name="mic" size={26} color="#fff" />
+        <Ionicons name="mic" size={24} color="#fff" />
       </TouchableOpacity>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#fff' },
+  container: { flex: 1, backgroundColor: COLORS.surface },
   loader: { flex: 1 },
 
-  // カスタムヘッダー
+  // ヘッダー
   headerRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -249,32 +256,57 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 10,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: '#eee',
+    borderBottomColor: COLORS.border,
+    backgroundColor: COLORS.surface,
   },
-  arrowBtn: { padding: 4 },
+  arrowBtn: { padding: 6 },
   monthPill: {
-    backgroundColor: '#E3F2FD',
-    borderRadius: 20,
-    paddingHorizontal: 16,
+    backgroundColor: COLORS.surfaceAlt,
+    borderRadius: RADIUS.full,
+    paddingHorizontal: 18,
     paddingVertical: 6,
     marginHorizontal: 8,
   },
-  monthPillText: { fontSize: 15, fontWeight: '600', color: '#1a1a1a' },
+  monthPillText: { fontSize: 15, fontWeight: '700', color: COLORS.textPrimary },
 
   // 日付バナー
   banner: {
-    backgroundColor: '#FFF9C4',
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.background,
     paddingHorizontal: 16,
-    paddingVertical: 6,
+    paddingVertical: 8,
+    gap: 6,
     borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: '#e0d080',
+    borderTopColor: COLORS.border,
   },
-  bannerText: { fontSize: 13, color: '#555', fontWeight: '500' },
+  bannerText: { fontSize: 13, color: COLORS.textSecondary, fontWeight: '600', flex: 1 },
+  entryCountBadge: {
+    backgroundColor: COLORS.primaryLight,
+    borderRadius: RADIUS.full,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+  },
+  entryCountText: { fontSize: 11, fontWeight: '700', color: COLORS.primary },
 
   // エントリーリスト
-  list: { flex: 1 },
-  listContent: { padding: 12, gap: 10 },
-  emptyText: { textAlign: 'center', color: '#aaa', fontSize: 14, marginTop: 24 },
+  list: { flex: 1, backgroundColor: COLORS.background },
+  listContent: { padding: 14, gap: 10, paddingBottom: 100 },
+
+  emptyDay: {
+    alignItems: 'center',
+    paddingVertical: 40,
+    gap: 8,
+  },
+  emptyDayText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: COLORS.textSecondary,
+  },
+  emptyDayHint: {
+    fontSize: 12,
+    color: COLORS.textTertiary,
+  },
 
   fab: {
     position: 'absolute',
@@ -283,28 +315,33 @@ const styles = StyleSheet.create({
     width: 60,
     height: 60,
     borderRadius: 30,
-    backgroundColor: '#4A90E2',
+    backgroundColor: COLORS.primary,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.2,
-    shadowRadius: 6,
-    elevation: 5,
+    ...SHADOWS.md,
   },
 
   // エントリーカード
   card: {
     flexDirection: 'row',
-    backgroundColor: '#EEF6FF',
-    borderRadius: 10,
+    alignItems: 'center',
+    backgroundColor: COLORS.surface,
+    borderRadius: RADIUS.md,
     padding: 14,
     gap: 12,
+    ...SHADOWS.sm,
   },
-  cardLeft: { alignItems: 'center', minWidth: 36 },
-  cardDow: { fontSize: 11, fontWeight: '500' },
-  cardDay: { fontSize: 24, fontWeight: '700', lineHeight: 28 },
-  cardTime: { fontSize: 11, marginTop: 2 },
-  cardRight: { flex: 1, justifyContent: 'center' },
-  cardBody: { fontSize: 14, color: '#333', lineHeight: 20 },
+  cardTimeCol: {
+    alignItems: 'center',
+    gap: 3,
+    minWidth: 36,
+  },
+  cardTime: { fontSize: 12, fontWeight: '600', color: COLORS.textSecondary },
+  cardDivider: {
+    width: 1,
+    height: '80%',
+    backgroundColor: COLORS.border,
+  },
+  cardRight: { flex: 1 },
+  cardBody: { fontSize: 14, color: COLORS.textPrimary, lineHeight: 20 },
 });

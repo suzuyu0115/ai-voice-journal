@@ -11,6 +11,7 @@ import { useRouter, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useCallback } from 'react';
 import { useDiaryList, type DiaryListEntry } from '../../src/hooks/useDiaryList';
+import { COLORS, SHADOWS, RADIUS } from '../../src/constants/theme';
 
 const DOW_JA = ['日', '月', '火', '水', '木', '金', '土'] as const;
 
@@ -83,21 +84,15 @@ function getMilestone(streak: number): Milestone {
 function StreakCard({ streak }: { streak: number }) {
   const { emoji, message, color } = getMilestone(streak);
   return (
-    <View style={[sc.card, { backgroundColor: color, shadowColor: color }]}>
+    <View style={[sc.card, { backgroundColor: color }]}>
       <View style={sc.bgCircle} />
-
       <View style={sc.inner}>
-        {/* 左：炎 + 数字 */}
         <Text style={sc.flame}>🔥</Text>
         <View style={sc.numBlock}>
           <Text style={sc.number}>{streak}</Text>
           <Text style={sc.unit}>日連続</Text>
         </View>
-
-        {/* 区切り */}
         <View style={sc.divider} />
-
-        {/* 右：ミッションバッジ */}
         <View style={sc.badgeBlock}>
           <Text style={sc.badgeEmoji}>{emoji}</Text>
           <Text style={sc.badgeText}>{message}</Text>
@@ -108,11 +103,16 @@ function StreakCard({ streak }: { streak: number }) {
 }
 
 function EntryCard({ entry, onPress }: { entry: DiaryListEntry; onPress: () => void }) {
+  const dow = formatDow(entry.created_at);
+  const isSunday = new Date(entry.created_at).getDay() === 0;
+  const isSaturday = new Date(entry.created_at).getDay() === 6;
+  const accentColor = isSunday ? '#EF4444' : isSaturday ? '#3B82F6' : COLORS.primary;
+
   return (
     <TouchableOpacity style={styles.card} onPress={onPress} activeOpacity={0.7}>
-      <View style={styles.dateBadge}>
-        <Text style={styles.dow}>{formatDow(entry.created_at)}</Text>
-        <Text style={styles.day}>{formatDay(entry.created_at)}</Text>
+      <View style={[styles.dateBadge, { borderLeftColor: accentColor }]}>
+        <Text style={[styles.dow, { color: accentColor }]}>{dow}</Text>
+        <Text style={[styles.day, { color: accentColor }]}>{formatDay(entry.created_at)}</Text>
         <Text style={styles.time}>{formatTime(entry.created_at)}</Text>
       </View>
       <View style={styles.cardBody}>
@@ -123,7 +123,7 @@ function EntryCard({ entry, onPress }: { entry: DiaryListEntry; onPress: () => v
           {entry.diary_text || ''}
         </Text>
       </View>
-      <Ionicons name="chevron-forward" size={16} color="#ccc" />
+      <Ionicons name="chevron-forward" size={15} color={COLORS.textTertiary} />
     </TouchableOpacity>
   );
 }
@@ -140,34 +140,38 @@ export default function HomeScreen() {
   if (loading) {
     return (
       <View style={styles.centered}>
-        <ActivityIndicator size="large" color="#4A90E2" />
+        <ActivityIndicator size="large" color={COLORS.primary} />
       </View>
     );
   }
 
   return (
     <SafeAreaView style={styles.screen} edges={['left', 'right']}>
-      {/* 固定ストリークカード */}
       {streak >= 1 && <StreakCard streak={streak} />}
 
       {error && (
         <View style={styles.errorBanner}>
+          <Ionicons name="warning-outline" size={14} color={COLORS.error} />
           <Text style={styles.errorText}>読み込みに失敗しました</Text>
         </View>
       )}
 
       {entries.length === 0 && !error ? (
         <View style={styles.centered}>
-          <Text style={styles.emptyIcon}>📓</Text>
-          <Text style={styles.emptyTitle}>日記がまだありません</Text>
-          <Text style={styles.emptyBody}>AIと話して今日の出来事を記録しましょう</Text>
+          <View style={styles.emptyIllustration}>
+            <Text style={styles.emptyIcon}>📓</Text>
+          </View>
+          <Text style={styles.emptyTitle}>まだ日記がありません</Text>
+          <Text style={styles.emptyBody}>AIと話すだけで{'\n'}日記が完成します</Text>
           <TouchableOpacity
             style={styles.startButton}
             onPress={() => router.push('/conversation')}
+            activeOpacity={0.85}
           >
-            <Ionicons name="mic" size={18} color="#fff" style={styles.startButtonIcon} />
+            <Ionicons name="mic" size={18} color="#fff" />
             <Text style={styles.startButtonText}>会話を始める</Text>
           </TouchableOpacity>
+          <Text style={styles.emptyHint}>✦ 話すだけで日記になる</Text>
         </View>
       ) : (
         <SectionList
@@ -193,7 +197,7 @@ export default function HomeScreen() {
           onPress={() => router.push('/conversation')}
           accessibilityLabel="会話を始める"
         >
-          <Ionicons name="mic" size={26} color="#fff" />
+          <Ionicons name="mic" size={24} color="#fff" />
         </TouchableOpacity>
       )}
     </SafeAreaView>
@@ -204,25 +208,20 @@ export default function HomeScreen() {
 const sc = StyleSheet.create({
   card: {
     marginHorizontal: 16,
-    marginTop: 10,
-    marginBottom: 6,
-    borderRadius: 20,
-    backgroundColor: '#F97316',
+    marginTop: 12,
+    marginBottom: 4,
+    borderRadius: RADIUS.lg,
     overflow: 'hidden',
-    shadowColor: '#F97316',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.4,
-    shadowRadius: 14,
-    elevation: 8,
+    ...SHADOWS.md,
   },
   bgCircle: {
     position: 'absolute',
-    width: 180,
-    height: 180,
-    borderRadius: 90,
+    width: 200,
+    height: 200,
+    borderRadius: 100,
     backgroundColor: 'rgba(255, 255, 255, 0.07)',
-    top: -70,
-    right: -40,
+    top: -80,
+    right: -50,
   },
   inner: {
     flexDirection: 'row',
@@ -231,73 +230,41 @@ const sc = StyleSheet.create({
     paddingHorizontal: 20,
     gap: 4,
   },
-  flame: {
-    fontSize: 32,
-    lineHeight: 38,
-    marginRight: 2,
-  },
-  numBlock: {
-    flexDirection: 'row',
-    alignItems: 'baseline',
-    gap: 4,
-  },
-  number: {
-    fontSize: 44,
-    fontWeight: '900',
-    color: '#fff',
-    lineHeight: 50,
-    letterSpacing: -1,
-  },
-  unit: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: 'rgba(255, 255, 255, 0.9)',
-    marginBottom: 2,
-  },
-  divider: {
-    width: 1,
-    height: 36,
-    backgroundColor: 'rgba(255,255,255,0.3)',
-    marginHorizontal: 14,
-  },
-  badgeBlock: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  badgeEmoji: {
-    fontSize: 20,
-    lineHeight: 24,
-  },
-  badgeText: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: '#fff',
-    flexShrink: 1,
-  },
+  flame: { fontSize: 30, lineHeight: 36, marginRight: 2 },
+  numBlock: { flexDirection: 'row', alignItems: 'baseline', gap: 4 },
+  number: { fontSize: 44, fontWeight: '900', color: '#fff', lineHeight: 50, letterSpacing: -1 },
+  unit: { fontSize: 15, fontWeight: '700', color: 'rgba(255,255,255,0.9)', marginBottom: 2 },
+  divider: { width: 1, height: 36, backgroundColor: 'rgba(255,255,255,0.3)', marginHorizontal: 14 },
+  badgeBlock: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 6 },
+  badgeEmoji: { fontSize: 20, lineHeight: 24 },
+  badgeText: { fontSize: 13, fontWeight: '700', color: '#fff', flexShrink: 1 },
 });
 
 // ── 共通スタイル ─────────────────────────────────────────────────
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: '#F2F2F7' },
+  screen: { flex: 1, backgroundColor: COLORS.background },
   centered: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 32 },
 
   errorBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
     margin: 16,
     padding: 12,
-    backgroundColor: '#FFEBEE',
-    borderRadius: 10,
+    backgroundColor: COLORS.errorLight,
+    borderRadius: RADIUS.md,
+    gap: 6,
   },
-  errorText: { fontSize: 13, color: '#e53e3e', textAlign: 'center' },
+  errorText: { fontSize: 13, color: COLORS.error },
 
   sectionHeader: {
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '700',
-    color: '#1a1a1a',
+    color: COLORS.textSecondary,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
     paddingHorizontal: 16,
-    paddingTop: 20,
-    paddingBottom: 6,
+    paddingTop: 24,
+    paddingBottom: 8,
   },
 
   listContent: { paddingBottom: 100 },
@@ -305,41 +272,64 @@ const styles = StyleSheet.create({
   card: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#fff',
+    backgroundColor: COLORS.surface,
     marginHorizontal: 16,
     marginBottom: 8,
-    borderRadius: 12,
+    borderRadius: RADIUS.md,
     paddingVertical: 14,
     paddingHorizontal: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 3,
-    elevation: 1,
+    ...SHADOWS.sm,
   },
-  dateBadge: { width: 48, alignItems: 'center', marginRight: 14 },
-  dow: { fontSize: 11, color: '#4A90E2', fontWeight: '600' },
-  day: { fontSize: 28, fontWeight: '700', color: '#4A90E2', lineHeight: 32 },
-  time: { fontSize: 11, color: '#888', marginTop: 2 },
+  dateBadge: {
+    width: 46,
+    alignItems: 'center',
+    marginRight: 14,
+    borderLeftWidth: 3,
+    paddingLeft: 8,
+  },
+  dow: { fontSize: 11, fontWeight: '700' },
+  day: { fontSize: 26, fontWeight: '800', lineHeight: 30 },
+  time: { fontSize: 11, color: COLORS.textTertiary, marginTop: 2 },
 
   cardBody: { flex: 1 },
-  entryTitle: { fontSize: 15, fontWeight: '700', color: '#1a1a1a', marginBottom: 3 },
-  entryPreview: { fontSize: 13, color: '#888', lineHeight: 18 },
+  entryTitle: { fontSize: 15, fontWeight: '700', color: COLORS.textPrimary, marginBottom: 3 },
+  entryPreview: { fontSize: 13, color: COLORS.textSecondary, lineHeight: 18 },
 
-  emptyIcon: { fontSize: 48, marginBottom: 16 },
-  emptyTitle: { fontSize: 18, fontWeight: '700', color: '#1a1a1a', marginBottom: 8 },
-  emptyBody: { fontSize: 14, color: '#888', textAlign: 'center', marginBottom: 32, lineHeight: 20 },
+  // Empty state
+  emptyIllustration: {
+    width: 96,
+    height: 96,
+    borderRadius: 48,
+    backgroundColor: COLORS.primaryLight,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 20,
+  },
+  emptyIcon: { fontSize: 44 },
+  emptyTitle: { fontSize: 20, fontWeight: '800', color: COLORS.textPrimary, marginBottom: 8 },
+  emptyBody: {
+    fontSize: 15,
+    color: COLORS.textSecondary,
+    textAlign: 'center',
+    marginBottom: 32,
+    lineHeight: 22,
+  },
   startButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#4A90E2',
-    paddingHorizontal: 28,
-    paddingVertical: 14,
-    borderRadius: 32,
+    backgroundColor: COLORS.primary,
+    paddingHorizontal: 32,
+    paddingVertical: 16,
+    borderRadius: RADIUS.full,
     gap: 8,
+    ...SHADOWS.md,
   },
-  startButtonIcon: {},
-  startButtonText: { color: '#fff', fontSize: 16, fontWeight: '600' },
+  startButtonText: { color: '#fff', fontSize: 17, fontWeight: '700' },
+  emptyHint: {
+    marginTop: 16,
+    fontSize: 13,
+    color: COLORS.textTertiary,
+  },
 
   fab: {
     position: 'absolute',
@@ -348,13 +338,9 @@ const styles = StyleSheet.create({
     width: 60,
     height: 60,
     borderRadius: 30,
-    backgroundColor: '#4A90E2',
+    backgroundColor: COLORS.primary,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.2,
-    shadowRadius: 6,
-    elevation: 5,
+    ...SHADOWS.md,
   },
 });
