@@ -35,19 +35,19 @@ export default function TabLayout() {
       }}
     >
       <Tabs.Screen
-        name="index"
-        options={{
-          title: 'ホーム',
-          headerTitle: 'AIダイアリー',
-          tabBarIcon: tabIcon('home', 'home-outline'),
-        }}
-      />
-      <Tabs.Screen
         name="conversation"
         options={{
           title: '会話',
           headerTitle: '今日の日記',
           tabBarIcon: tabIcon('mic', 'mic-outline'),
+        }}
+      />
+      <Tabs.Screen
+        name="index"
+        options={{
+          title: 'ホーム',
+          headerTitle: 'AIダイアリー',
+          tabBarIcon: tabIcon('home', 'home-outline'),
         }}
       />
       <Tabs.Screen
