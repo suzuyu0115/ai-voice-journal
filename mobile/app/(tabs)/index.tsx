@@ -67,6 +67,38 @@ function calcStreak(entries: DiaryListEntry[]): number {
   return streak;
 }
 
+function getMilestone(streak: number): { emoji: string; message: string } {
+  if (streak >= 365) return { emoji: '👑', message: '1年達成！伝説だ' };
+  if (streak >= 100) return { emoji: '💎', message: '100日突破！最強' };
+  if (streak >= 30)  return { emoji: '🏆', message: '1ヶ月達成！' };
+  if (streak >= 14)  return { emoji: '⚡', message: '2週間突破！' };
+  if (streak >= 7)   return { emoji: '🌟', message: '1週間達成！' };
+  if (streak >= 3)   return { emoji: '💪', message: '3日坊主じゃない！' };
+  if (streak >= 2)   return { emoji: '✨', message: 'いい調子！' };
+  return               { emoji: '🌱', message: '記録スタート！' };
+}
+
+function StreakCard({ streak }: { streak: number }) {
+  const { emoji, message } = getMilestone(streak);
+  return (
+    <View style={sc.card}>
+      {/* 背景の装飾 */}
+      <View style={sc.bgCircleLarge} />
+      <View style={sc.bgCircleSmall} />
+
+      {/* フレーム */}
+      <View style={sc.inner}>
+        <Text style={sc.flame}>🔥</Text>
+        <Text style={sc.number}>{streak}</Text>
+        <Text style={sc.unit}>日連続記録中</Text>
+        <View style={sc.badge}>
+          <Text style={sc.badgeText}>{emoji}  {message}</Text>
+        </View>
+      </View>
+    </View>
+  );
+}
+
 function EntryCard({ entry, onPress }: { entry: DiaryListEntry; onPress: () => void }) {
   return (
     <TouchableOpacity style={styles.card} onPress={onPress} activeOpacity={0.7}>
@@ -105,20 +137,19 @@ export default function HomeScreen() {
     );
   }
 
-  return (
-    <SafeAreaView style={styles.screen} edges={['left', 'right']}>
-      {streak >= 2 && (
-        <View style={styles.streakBanner}>
-          <Text style={styles.streakText}>🔥 {streak}日連続記録中</Text>
-        </View>
-      )}
-
+  const listHeader = (
+    <>
+      {streak >= 1 && <StreakCard streak={streak} />}
       {error && (
         <View style={styles.errorBanner}>
           <Text style={styles.errorText}>読み込みに失敗しました</Text>
         </View>
       )}
+    </>
+  );
 
+  return (
+    <SafeAreaView style={styles.screen} edges={['left', 'right']}>
       {entries.length === 0 && !error ? (
         <View style={styles.centered}>
           <Text style={styles.emptyIcon}>📓</Text>
@@ -145,6 +176,7 @@ export default function HomeScreen() {
           renderSectionHeader={({ section }) => (
             <Text style={styles.sectionHeader}>{section.title}</Text>
           )}
+          ListHeaderComponent={listHeader}
           contentContainerStyle={styles.listContent}
           stickySectionHeadersEnabled={false}
         />
@@ -163,20 +195,82 @@ export default function HomeScreen() {
   );
 }
 
+// ── StreakCard スタイル ──────────────────────────────────────────
+const sc = StyleSheet.create({
+  card: {
+    marginHorizontal: 16,
+    marginTop: 14,
+    marginBottom: 6,
+    borderRadius: 28,
+    backgroundColor: '#F97316',
+    overflow: 'hidden',
+    shadowColor: '#F97316',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.45,
+    shadowRadius: 18,
+    elevation: 10,
+  },
+  bgCircleLarge: {
+    position: 'absolute',
+    width: 220,
+    height: 220,
+    borderRadius: 110,
+    backgroundColor: 'rgba(255, 255, 255, 0.07)',
+    top: -60,
+    right: -50,
+  },
+  bgCircleSmall: {
+    position: 'absolute',
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    backgroundColor: 'rgba(255, 200, 0, 0.15)',
+    bottom: -30,
+    left: 20,
+  },
+  inner: {
+    alignItems: 'center',
+    paddingTop: 28,
+    paddingBottom: 24,
+    paddingHorizontal: 24,
+  },
+  flame: {
+    fontSize: 56,
+    lineHeight: 68,
+  },
+  number: {
+    fontSize: 80,
+    fontWeight: '900',
+    color: '#fff',
+    lineHeight: 88,
+    letterSpacing: -2,
+  },
+  unit: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: 'rgba(255, 255, 255, 0.92)',
+    marginTop: 2,
+    letterSpacing: 1,
+  },
+  badge: {
+    marginTop: 14,
+    backgroundColor: 'rgba(255, 255, 255, 0.22)',
+    borderRadius: 20,
+    paddingHorizontal: 20,
+    paddingVertical: 7,
+  },
+  badgeText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#fff',
+    letterSpacing: 0.5,
+  },
+});
+
+// ── 共通スタイル ─────────────────────────────────────────────────
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: '#F2F2F7' },
   centered: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 32 },
-
-  streakBanner: {
-    marginHorizontal: 16,
-    marginTop: 8,
-    paddingVertical: 8,
-    paddingHorizontal: 14,
-    backgroundColor: '#FFF8E7',
-    borderRadius: 10,
-    alignSelf: 'flex-start',
-  },
-  streakText: { fontSize: 13, fontWeight: '600', color: '#D97706' },
 
   errorBanner: {
     margin: 16,
