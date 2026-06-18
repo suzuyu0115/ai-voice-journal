@@ -31,14 +31,14 @@ export default function TabLayout() {
         headerStyle: { backgroundColor: COLORS.surface },
         headerTitleStyle: { fontWeight: '700', color: COLORS.textPrimary, fontSize: 17 },
         headerShadowVisible: false,
-        headerTitleAlign: 'left',
+        headerTitleAlign: 'center',
       }}
     >
       <Tabs.Screen
         name="index"
         options={{
           title: 'ホーム',
-          headerTitle: 'AI Voice Journal',
+          headerTitle: 'AIダイアリー',
           tabBarIcon: tabIcon('home', 'home-outline'),
         }}
       />
