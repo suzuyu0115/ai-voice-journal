@@ -82,17 +82,23 @@ function StreakCard({ streak }: { streak: number }) {
   const { emoji, message } = getMilestone(streak);
   return (
     <View style={sc.card}>
-      {/* 背景の装飾 */}
-      <View style={sc.bgCircleLarge} />
-      <View style={sc.bgCircleSmall} />
+      <View style={sc.bgCircle} />
 
-      {/* フレーム */}
       <View style={sc.inner}>
+        {/* 左：炎 + 数字 */}
         <Text style={sc.flame}>🔥</Text>
-        <Text style={sc.number}>{streak}</Text>
-        <Text style={sc.unit}>日連続記録中</Text>
-        <View style={sc.badge}>
-          <Text style={sc.badgeText}>{emoji}  {message}</Text>
+        <View style={sc.numBlock}>
+          <Text style={sc.number}>{streak}</Text>
+          <Text style={sc.unit}>日連続</Text>
+        </View>
+
+        {/* 区切り */}
+        <View style={sc.divider} />
+
+        {/* 右：ミッションバッジ */}
+        <View style={sc.badgeBlock}>
+          <Text style={sc.badgeEmoji}>{emoji}</Text>
+          <Text style={sc.badgeText}>{message}</Text>
         </View>
       </View>
     </View>
@@ -137,19 +143,17 @@ export default function HomeScreen() {
     );
   }
 
-  const listHeader = (
-    <>
+  return (
+    <SafeAreaView style={styles.screen} edges={['left', 'right']}>
+      {/* 固定ストリークカード */}
       {streak >= 1 && <StreakCard streak={streak} />}
+
       {error && (
         <View style={styles.errorBanner}>
           <Text style={styles.errorText}>読み込みに失敗しました</Text>
         </View>
       )}
-    </>
-  );
 
-  return (
-    <SafeAreaView style={styles.screen} edges={['left', 'right']}>
       {entries.length === 0 && !error ? (
         <View style={styles.centered}>
           <Text style={styles.emptyIcon}>📓</Text>
@@ -176,7 +180,6 @@ export default function HomeScreen() {
           renderSectionHeader={({ section }) => (
             <Text style={styles.sectionHeader}>{section.title}</Text>
           )}
-          ListHeaderComponent={listHeader}
           contentContainerStyle={styles.listContent}
           stickySectionHeadersEnabled={false}
         />
@@ -199,71 +202,77 @@ export default function HomeScreen() {
 const sc = StyleSheet.create({
   card: {
     marginHorizontal: 16,
-    marginTop: 14,
+    marginTop: 10,
     marginBottom: 6,
-    borderRadius: 28,
+    borderRadius: 20,
     backgroundColor: '#F97316',
     overflow: 'hidden',
     shadowColor: '#F97316',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.45,
-    shadowRadius: 18,
-    elevation: 10,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.4,
+    shadowRadius: 14,
+    elevation: 8,
   },
-  bgCircleLarge: {
+  bgCircle: {
     position: 'absolute',
-    width: 220,
-    height: 220,
-    borderRadius: 110,
+    width: 180,
+    height: 180,
+    borderRadius: 90,
     backgroundColor: 'rgba(255, 255, 255, 0.07)',
-    top: -60,
-    right: -50,
-  },
-  bgCircleSmall: {
-    position: 'absolute',
-    width: 120,
-    height: 120,
-    borderRadius: 60,
-    backgroundColor: 'rgba(255, 200, 0, 0.15)',
-    bottom: -30,
-    left: 20,
+    top: -70,
+    right: -40,
   },
   inner: {
+    flexDirection: 'row',
     alignItems: 'center',
-    paddingTop: 28,
-    paddingBottom: 24,
-    paddingHorizontal: 24,
+    paddingVertical: 14,
+    paddingHorizontal: 20,
+    gap: 4,
   },
   flame: {
-    fontSize: 56,
-    lineHeight: 68,
+    fontSize: 32,
+    lineHeight: 38,
+    marginRight: 2,
+  },
+  numBlock: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    gap: 4,
   },
   number: {
-    fontSize: 80,
+    fontSize: 44,
     fontWeight: '900',
     color: '#fff',
-    lineHeight: 88,
-    letterSpacing: -2,
+    lineHeight: 50,
+    letterSpacing: -1,
   },
   unit: {
-    fontSize: 18,
+    fontSize: 15,
     fontWeight: '700',
-    color: 'rgba(255, 255, 255, 0.92)',
-    marginTop: 2,
-    letterSpacing: 1,
+    color: 'rgba(255, 255, 255, 0.9)',
+    marginBottom: 2,
   },
-  badge: {
-    marginTop: 14,
-    backgroundColor: 'rgba(255, 255, 255, 0.22)',
-    borderRadius: 20,
-    paddingHorizontal: 20,
-    paddingVertical: 7,
+  divider: {
+    width: 1,
+    height: 36,
+    backgroundColor: 'rgba(255,255,255,0.3)',
+    marginHorizontal: 14,
+  },
+  badgeBlock: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  badgeEmoji: {
+    fontSize: 20,
+    lineHeight: 24,
   },
   badgeText: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '700',
     color: '#fff',
-    letterSpacing: 0.5,
+    flexShrink: 1,
   },
 });
 
