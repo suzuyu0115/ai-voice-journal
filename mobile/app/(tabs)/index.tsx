@@ -67,21 +67,23 @@ function calcStreak(entries: DiaryListEntry[]): number {
   return streak;
 }
 
-function getMilestone(streak: number): { emoji: string; message: string } {
-  if (streak >= 365) return { emoji: '👑', message: '1年達成！伝説だ' };
-  if (streak >= 100) return { emoji: '💎', message: '100日突破！最強' };
-  if (streak >= 30)  return { emoji: '🏆', message: '1ヶ月達成！' };
-  if (streak >= 14)  return { emoji: '⚡', message: '2週間突破！' };
-  if (streak >= 7)   return { emoji: '🌟', message: '1週間達成！' };
-  if (streak >= 3)   return { emoji: '💪', message: '3日坊主じゃない！' };
-  if (streak >= 2)   return { emoji: '✨', message: 'いい調子！' };
-  return               { emoji: '🌱', message: '記録スタート！' };
+type Milestone = { emoji: string; message: string; color: string };
+
+function getMilestone(streak: number): Milestone {
+  if (streak >= 365) return { emoji: '👑', message: '1年達成！伝説だ',     color: '#92400E' };
+  if (streak >= 100) return { emoji: '💎', message: '100日突破！最強',     color: '#6366F1' };
+  if (streak >= 30)  return { emoji: '🏆', message: '1ヶ月達成！',         color: '#EC4899' };
+  if (streak >= 14)  return { emoji: '⚡', message: '2週間突破！',         color: '#8B5CF6' };
+  if (streak >= 7)   return { emoji: '🌟', message: '1週間達成！',         color: '#F59E0B' };
+  if (streak >= 3)   return { emoji: '💪', message: '3日坊主じゃない！',   color: '#F97316' };
+  if (streak >= 2)   return { emoji: '✨', message: 'いい調子！',           color: '#F97316' };
+  return               { emoji: '🌱', message: '記録スタート！',           color: '#06B6D4' };
 }
 
 function StreakCard({ streak }: { streak: number }) {
-  const { emoji, message } = getMilestone(streak);
+  const { emoji, message, color } = getMilestone(streak);
   return (
-    <View style={sc.card}>
+    <View style={[sc.card, { backgroundColor: color, shadowColor: color }]}>
       <View style={sc.bgCircle} />
 
       <View style={sc.inner}>
