@@ -1,4 +1,4 @@
-import { useCallback, useState, useRef, useEffect } from 'react';
+import { useCallback, useState, useRef } from 'react';
 import {
   View,
   Text,
@@ -6,7 +6,6 @@ import {
   ScrollView,
   ActivityIndicator,
   StyleSheet,
-  PanResponder,
   Animated,
   Dimensions,
 } from 'react-native';
@@ -126,21 +125,9 @@ export default function CalendarScreen() {
     });
   }, [slideAnim]);
 
-  // 常に最新の changeMonth を参照するための ref（PanResponder の stale closure 対策）
-  const changeMonthRef = useRef(changeMonth);
-  useEffect(() => { changeMonthRef.current = changeMonth; }, [changeMonth]);
-
-  // ── スワイプジェスチャー ──────────────────────────────────────
-  const panResponder = useRef(
-    PanResponder.create({
-      onMoveShouldSetPanResponder: (_, { dx, dy }) =>
-        Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 20,
-      onPanResponderRelease: (_, { dx }) => {
-        if (dx < -SWIPE_THRESHOLD) changeMonthRef.current('next');
-        else if (dx > SWIPE_THRESHOLD) changeMonthRef.current('prev');
-      },
-    })
-  ).current;
+  // ── スワイプジェスチャー（タッチ座標を追跡）──────────────────────
+  // onTouchStart/onTouchEnd はイベントハンドラ内でのみ .current を読み書きするため linter セーフ
+  const swipeStartXRef = useRef(0);
 
   // ── カレンダーのマーク ─────────────────────────────────────────
   const entryMarks = Object.keys(entriesByDate).reduce<MarkedDates>((acc, date) => {
@@ -218,7 +205,15 @@ export default function CalendarScreen() {
       </View>
 
       {/* スワイプ対応エリア（カレンダー + バナー） */}
-      <View style={styles.slideWrapper} {...panResponder.panHandlers}>
+      <View
+        style={styles.slideWrapper}
+        onTouchStart={(e) => { swipeStartXRef.current = e.nativeEvent.pageX; }}
+        onTouchEnd={(e) => {
+          const dx = e.nativeEvent.pageX - swipeStartXRef.current;
+          if (dx < -SWIPE_THRESHOLD) changeMonth('next');
+          else if (dx > SWIPE_THRESHOLD) changeMonth('prev');
+        }}
+      >
         <Animated.View style={{ transform: [{ translateX: slideAnim }] }}>
           <Calendar
             key={displayMonthStr}

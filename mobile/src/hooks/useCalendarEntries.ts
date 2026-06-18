@@ -30,13 +30,6 @@ export function useCalendarEntries(month: string) {
   }, [month]);
 
   useEffect(() => {
-    const cached = entriesCache.get(month);
-    if (cached) {
-      setEntriesByDate(cached);
-      setLoading(false);
-      return;
-    }
-
     const [year, monthNum] = month.split('-').map(Number);
     const startDate = new Date(year, monthNum - 1, 1).toISOString();
     const endDate = new Date(year, monthNum, 0, 23, 59, 59).toISOString();
@@ -44,6 +37,15 @@ export function useCalendarEntries(month: string) {
     let cancelled = false;
 
     async function fetchEntries() {
+      const cached = entriesCache.get(month);
+      if (cached) {
+        if (!cancelled) {
+          setEntriesByDate(cached);
+          setLoading(false);
+        }
+        return;
+      }
+
       setLoading(true);
       const { data, error: sbError } = await supabase
         .from('diary_entries')
