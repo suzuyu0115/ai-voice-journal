@@ -167,7 +167,7 @@ gh pr create \
 
 ---
 
-## 現在の実装状況（2026-06-18時点）
+## 現在の実装状況（2026-06-19時点）
 
 ### 完了済み（main にマージ済み）
 - Expo SDK 56 プロジェクト作成（`mobile/`）
@@ -188,20 +188,21 @@ gh pr create \
 - **#42** 会話機能を Gemini Live API に刷新（リアルタイム双方向音声・`useGeminiLive.ts`、PR #43）
 
 ### オープン PR（未マージ）
-- **PR #51** (#50): カレンダー画面の選択日から日記を追加する FAB マイクボタン、`targetDate` を Zustand store に追加
-- **PR #52** (#45 + #47 + #49): 日記日付編集（今日/昨日/一昨日チップ + カレンダーモーダル）、匿名認証
+- **PR #59** (#58): ストリーク表示を Duolingo 風大型カードにリデザイン（固定表示・ステージ別カラー）
 
 ### コードの状態
 - `app/(tabs)/conversation.tsx`: Gemini Live UI に全面刷新（マイクボタン・ステータス表示・会話バブル）
-- `app/(tabs)/index.tsx`: 日記一覧（ジャーナルスタイル）、連続記録ストリーク表示
-- `app/summary/[id].tsx`: **2モード対応**（表示モード／作成モード）。PR #51/#52 マージ後はヘッダー日付タップでカレンダーモーダルに変更予定
+- `app/(tabs)/index.tsx`: 日記一覧（ジャーナルスタイル）、Duolingo 風ストリークカード固定表示（ストリーク数に応じて色変化）
+- `app/(tabs)/calendar.tsx`: FAB マイクボタン（selectedDate → targetDate → 会話画面遷移）
+- `app/summary/[id].tsx`: **2モード対応**（表示モード／作成モード）。ヘッダー日付タップでカレンダーモーダル
+- `app/_layout.tsx`: 起動時に匿名認証を自動初期化
 - `src/hooks/useGeminiLive.ts`: Gemini Live WebSocket、isWrappingUpRef パターンで会話終了管理
-- `src/hooks/useSummary.ts`: `entryDate`/`setEntryDate` 追加（PR #51 で `targetDate` から初期化）
+- `src/hooks/useAuth.ts`: Supabase 匿名認証フック
+- `src/hooks/useSummary.ts`: `entryDate`/`setEntryDate`（`targetDate` から初期化）
 - `src/hooks/useDiaryList.ts`: ホーム画面用日記一覧取得（Supabase、フォーカス時リフレッシュ）
 - `src/hooks/useDiaryEntry.ts`: 日記詳細取得・削除
-- `src/hooks/useAuth.ts`: Supabase 匿名認証フック（PR #52 でマージ予定）
 - `src/lib/supabase.ts`: `updateDiaryEntry`・`deleteDiaryEntry` 追加、`insertDiaryEntry` に `created_at` オプション追加
-- `src/store/journalStore.ts`: `pendingMessages` 管理。PR #51 で `targetDate`/`setTargetDate` 追加予定
+- `src/store/journalStore.ts`: `pendingMessages`・`targetDate`/`setTargetDate` 管理
 - `src/components/BottomTabBar.tsx` のみ残存（`RecordButton`・`ChatBubble` は #42 で削除済み）
 - 実機ビルド確認済み（bundleIdentifier: com.suzuyu0115.aivoicejournal、Personal Team 署名）
 
@@ -215,10 +216,10 @@ gh pr create \
 | diary_text | text | AI生成本文 |
 | tags | text[] | |
 
-RLS: INSERT TO anon WITH CHECK (true)（MVP 用）→ PR #52 マージ後に `user_id` カラム追加・RLS 厳格化予定
+RLS: `auth.uid() = user_id`（匿名認証対応済み）
 
 ### 次のステップ
-- PR #51 (#50)・PR #52 (#45/#47/#49) をユーザーがレビュー・マージ → MVP 完成（締め切り 2026-06-19）
+- PR #59 (#58 ストリークリデザイン) をユーザーがレビュー・マージ → MVP 完成
 
 ---
 
@@ -254,9 +255,11 @@ RLS: INSERT TO anon WITH CHECK (true)（MVP 用）→ PR #52 マージ後に `us
 | #45 | 日記の日付を今日/昨日/一昨日から選択 | feature | PR #52（レビュー待ち）|
 | #47 | ヘッダー日付タップでカレンダーピッカー | feature | PR #52（レビュー待ち）|
 | #49 | 匿名認証でユーザーデータを分離 | feature | PR #52（レビュー待ち）|
-| #50 | カレンダー画面から日記を追加（FAB） | feature | PR #51（レビュー待ち）|
+| #50 | カレンダー画面から日記を追加（FAB） | feature | 完了（PR #51）|
+| #53 | CLAUDE.md ドキュメント更新 | docs | 完了（PR #54）|
+| #58 | ストリーク表示を Duolingo 風にリデザイン | feature | PR #59（レビュー待ち）|
 
 ## 推奨着手順序
 
-1. ~~#1〜#9, #16, #19, #21, #30, #31, #34, #35, #37, #40, #42~~ 完了済み
-2. PR #51 (#50) と PR #52 (#45/#47/#49) をマージ → MVP 完成
+1. ~~#1〜#9, #16, #19, #21, #30〜#35, #37, #40, #42, #45, #47, #49, #50, #53~~ 完了済み
+2. PR #59 (#58 ストリークリデザイン) をマージ → MVP 完成

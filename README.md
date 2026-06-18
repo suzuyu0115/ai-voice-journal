@@ -4,7 +4,7 @@ AIと音声で会話しながら内省を深める日記アプリ。
 
 ## コンセプト
 
-ボタンをタップして話しかけると、AIが音声で返答。2〜3ターンの自然な会話が、そのまま日記になる。
+マイクボタンをタップして話しかけると、Gemini Live API がリアルタイムで聞き取り・応答。2〜3ターンの自然な音声会話が、そのまま日記になる。
 
 ## ターゲットユーザー
 
@@ -15,9 +15,9 @@ AIと音声で会話しながら内省を深める日記アプリ。
 ## 価値提案
 
 - 3分以内で完結
-- 音声入力メイン（文字起こし結果を確認・編集してから送信）
+- 音声だけで完結（STT・AI 応答・TTS すべてリアルタイム）
 - AIが深掘り質問して自然に内省を引き出す
-- リアルタイム文字起こしで認識確認できる
+- Duolingo 風ストリークで継続モチベーションを維持
 
 ---
 
@@ -26,12 +26,12 @@ AIと音声で会話しながら内省を深める日記アプリ。
 | レイヤー | 技術 | 備考 |
 |---------|------|------|
 | モバイル | React Native + Expo 56 (TypeScript) | Expo dev build 必須 |
-| STT（リアルタイム文字起こし） | `expo-speech-recognition` | iOS ネイティブ Speech framework |
-| AI 会話 | Gemini API `gemini-2.5-flash` | テキスト入力のみ |
-| TTS（AI 音声出力） | `expo-speech` | |
+| AI 会話・STT・TTS | Gemini Live API `gemini-2.5-flash-preview-native-audio` | リアルタイム双方向音声 WebSocket |
+| 音声 I/O | `@speechmatics/expo-two-way-audio` | PCM ストリーミング |
 | 状態管理 | Zustand | |
-| DB / Auth | Supabase | |
+| DB / Auth | Supabase | 匿名認証 + RLS |
 | ナビゲーション | expo-router | |
+| カレンダー | `react-native-calendars` | |
 
 ---
 
@@ -39,14 +39,11 @@ AIと音声で会話しながら内省を深める日記アプリ。
 
 ```
 マイクボタンをタップ
-  → expo-speech-recognition でリアルタイム文字起こし開始
-もう一度タップ
-  → 文字起こし結果がテキスト入力欄に入る（確認・編集可能）
-「送信」ボタンをタップ
-  → Gemini API にテキスト送信（gemini-2.5-flash、ストリーミング）
-  → AI 返答を一文字ずつ表示しながら expo-speech で読み上げ
-最大 3 ターンで自動終了 or 「まとめる」ボタンでいつでも終了
-  → サマリー画面へ遷移 → Supabase に保存
+  → Gemini Live WebSocket 接続
+  → リアルタイム音声入出力（STT・AI 応答・TTS が一体）
+AI の発話と文字起こしがリアルタイムで画面に表示される
+自動終了（3ターン後）or 「まとめる」ボタンでいつでも終了
+  → サマリー画面へ遷移 → タイトル・本文を AI 生成 → Supabase に保存
 ```
 
 ---
@@ -55,11 +52,11 @@ AIと音声で会話しながら内省を深める日記アプリ。
 
 | 画面 | 内容 |
 |------|------|
-| ホーム | 過去の日記一覧（日付・感情スコア・振り返り文冒頭）、ストリーク表示 |
-| 会話 | ボタンタップで音声入力、リアルタイム文字起こし表示、AI が音声で返答 |
-| カレンダー | 感情スコアのヒートマップ |
-| 設定 | アプリ設定 |
-| サマリー | 感情スコア + AI 生成の振り返り文、保存（タブバーなしフルスクリーン） |
+| ホーム | 日記一覧（ジャーナルスタイル）、Duolingo 風ストリークカード |
+| 会話 | マイクボタン・ステータス表示・会話バブル、Gemini Live によるリアルタイム音声会話 |
+| カレンダー | 月間カレンダー・記録日ハイライト・日記プレビュー・FAB で選択日に日記追加 |
+| 設定 | バージョン表示・各種設定項目 UI |
+| サマリー | AI 生成タイトル・本文・編集・保存（タブバーなしフルスクリーン） |
 
 ---
 
@@ -70,7 +67,7 @@ AIと音声で会話しながら内省を深める日記アプリ。
 - macOS + Xcode（実機ビルドに必須）
 - Node.js 18 以上
 - Apple ID（無料の個人開発者アカウントで OK）
-- iOS デバイス（音声認識は Simulator 非対応）
+- iOS デバイス（Gemini Live は Simulator 非対応）
 
 ### 初回セットアップ
 
@@ -78,7 +75,6 @@ AIと音声で会話しながら内省を深める日記アプリ。
 cd mobile
 cp .env.example .env   # APIキーを記入（下記参照）
 npm install
-npx expo prebuild --platform ios --clean
 npx expo run:ios --device
 ```
 
@@ -131,17 +127,18 @@ npx expo start
 
 ### MVP（〜2026-06-19）
 
-- [x] ボタンタップ STT（リアルタイム文字起こし表示、文字起こし結果をテキスト入力欄に反映）
-- [x] Gemini API 連携（テキスト会話、最大 3 ターン、ストリーミング表示）
-- [x] AI 応答の TTS 再生（expo-speech）
-- [x] 最大 3 ラリーで自動終了 + 「まとめる」ボタンでいつでも終了
+- [x] Gemini Live API によるリアルタイム双方向音声会話
+- [x] 最大 3 ターンで自動終了 + 「まとめる」ボタンでいつでも終了
 - [x] フッターナビゲーションバー（4タブ）
 - [x] 日記サマリー自動生成（Gemini によるタイトル+本文生成・編集・Supabase 保存）
-- [x] カレンダー画面（月間カレンダー・日記記録日のハイライト・日記プレビュー）
-- [x] カレンダーから日記詳細を閲覧（タイトル・本文・会話履歴）
+- [x] 日記の日付を編集（ヘッダー日付タップ → カレンダーモーダル）
+- [x] 日記一覧表示（ジャーナルスタイル・セクション分け）
+- [x] ストリーク（連続記録日数）Duolingo 風カード表示（色がステージで変化）
+- [x] カレンダー画面（月間カレンダー・日記記録日ハイライト・プレビュー）
+- [x] カレンダーから日記詳細を閲覧・編集・削除
+- [x] カレンダーの選択日から日記作成（FAB ボタン）
 - [x] 設定画面（バージョン表示・各種設定項目 UI）
-- [ ] 日記一覧表示
-- [ ] ストリーク（連続記録日数）表示
+- [x] 匿名認証（Supabase Anonymous Auth）によるユーザーデータ分離
 
 ### V2 以降
 
@@ -155,25 +152,16 @@ npx expo start
 
 ---
 
-## データモデル
+## データモデル（Supabase `diary_entries`）
 
 | フィールド | 型 | 備考 |
 |-----------|-----|------|
-| id | uuid | Supabase 自動生成 |
-| created_at | timestamp | |
-| conversation_log | JSON | AI とのやり取り全文 |
-| diary_text | string | AI 生成サマリー |
-| emotion_score | object | ラベル＋スコア |
-| tags | string[] | |
-
----
-
-## マネタイズ
-
-- 月額 / 年額サブスク（フリーミアム）
-- 無料枠：基本機能
-- 有料枠（V2）：データエクスポート、AI ラリー数増加など
-- 広告なし
+| id | uuid | 自動生成 |
+| created_at | timestamptz | 日記の日付として使用（noon UTC） |
+| title | text | AI 生成、最大 50 字 |
+| conversation_log | jsonb | `[{ role, text }]` |
+| diary_text | text | AI 生成本文 |
+| tags | text[] | |
 
 ---
 
@@ -183,23 +171,29 @@ npx expo start
 ai-voice-journal/
 ├── mobile/
 │   ├── app/
-│   │   ├── index.tsx              # ホーム画面
-│   │   ├── conversation.tsx       # 会話画面
-│   │   └── summary/[id].tsx       # サマリー画面
+│   │   ├── (tabs)/
+│   │   │   ├── index.tsx          # ホーム（日記一覧 + ストリーク）
+│   │   │   ├── conversation.tsx   # 会話（Gemini Live）
+│   │   │   ├── calendar.tsx       # カレンダー
+│   │   │   └── settings.tsx       # 設定
+│   │   └── summary/[id].tsx       # サマリー（作成・表示モード）
 │   ├── src/
 │   │   ├── hooks/
-│   │   │   ├── useVoiceRecorder.ts  # STT フック
-│   │   │   └── useJournalChat.ts    # Gemini API + 会話管理
+│   │   │   ├── useGeminiLive.ts   # Gemini Live WebSocket 管理
+│   │   │   ├── useAuth.ts         # Supabase 匿名認証
+│   │   │   ├── useSummary.ts      # サマリー生成・保存
+│   │   │   ├── useDiaryList.ts    # 日記一覧取得
+│   │   │   ├── useDiaryEntry.ts   # 日記詳細取得・削除
+│   │   │   └── useCalendarEntries.ts
 │   │   ├── lib/
-│   │   │   ├── gemini.ts            # Gemini API クライアント
-│   │   │   └── supabase.ts          # Supabase クライアント
+│   │   │   ├── gemini.ts          # generateSummary
+│   │   │   └── supabase.ts        # DB ヘルパー
 │   │   ├── store/
-│   │   │   └── journalStore.ts      # Zustand
+│   │   │   └── journalStore.ts    # Zustand（pendingMessages, targetDate）
 │   │   └── components/
-│   │       ├── RecordButton.tsx
-│   │       └── ChatBubble.tsx
-│   └── .env                         # 環境変数（Git 管理外）
-└── api/                             # バックエンド（MVP では不使用）
+│   │       └── BottomTabBar.tsx
+│   └── .env                       # 環境変数（Git 管理外）
+└── api/                           # バックエンド（MVP では不使用）
 ```
 
 ---
