@@ -38,9 +38,10 @@ export const supabase = createClient(
 export async function insertDiaryEntry(
   entry: Omit<DiaryEntry, 'id' | 'created_at'> & { created_at?: string }
 ): Promise<DiaryEntry> {
+  const { data: { user } } = await supabase.auth.getUser();
   const { data, error } = await supabase
     .from('diary_entries')
-    .insert(entry)
+    .insert({ ...entry, user_id: user?.id })
     .select()
     .single();
   if (error) throw error;
