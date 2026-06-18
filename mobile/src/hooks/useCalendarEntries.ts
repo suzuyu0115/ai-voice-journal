@@ -9,13 +9,25 @@ export type CalendarEntry = {
 
 type EntriesByDate = Record<string, CalendarEntry[]>;
 
+// アプリセッション中にフェッチ済みの月データを保持するキャッシュ
+const entriesCache = new Map<string, EntriesByDate>();
+
+export function _clearEntriesCache() {
+  entriesCache.clear();
+}
+
 export function useCalendarEntries(month: string) {
-  const [entriesByDate, setEntriesByDate] = useState<EntriesByDate>({});
-  const [loading, setLoading] = useState(true);
+  const [entriesByDate, setEntriesByDate] = useState<EntriesByDate>(
+    () => entriesCache.get(month) ?? {}
+  );
+  const [loading, setLoading] = useState(() => !entriesCache.has(month));
   const [error, setError] = useState<Error | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
 
-  const refetch = useCallback(() => setRefreshKey((k) => k + 1), []);
+  const refetch = useCallback(() => {
+    entriesCache.delete(month);
+    setRefreshKey((k) => k + 1);
+  }, [month]);
 
   useEffect(() => {
     const [year, monthNum] = month.split('-').map(Number);
@@ -25,6 +37,15 @@ export function useCalendarEntries(month: string) {
     let cancelled = false;
 
     async function fetchEntries() {
+      const cached = entriesCache.get(month);
+      if (cached) {
+        if (!cancelled) {
+          setEntriesByDate(cached);
+          setLoading(false);
+        }
+        return;
+      }
+
       setLoading(true);
       const { data, error: sbError } = await supabase
         .from('diary_entries')
@@ -45,6 +66,7 @@ export function useCalendarEntries(month: string) {
           if (!grouped[dateKey]) grouped[dateKey] = [];
           grouped[dateKey].push(entry);
         }
+        entriesCache.set(month, grouped);
         setEntriesByDate(grouped);
       }
       setLoading(false);

@@ -1,6 +1,6 @@
 import React from 'react';
 import { create, act } from 'react-test-renderer';
-import { useCalendarEntries } from '../useCalendarEntries';
+import { useCalendarEntries, _clearEntriesCache } from '../useCalendarEntries';
 import { supabase } from '../../lib/supabase';
 
 jest.mock('../../lib/supabase', () => ({
@@ -36,6 +36,7 @@ function renderHook(month: string) {
 
 beforeEach(() => {
   jest.clearAllMocks();
+  _clearEntriesCache();
 });
 
 describe('useCalendarEntries', () => {

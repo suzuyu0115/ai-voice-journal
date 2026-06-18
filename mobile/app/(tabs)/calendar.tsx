@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useState, useRef } from 'react';
 import {
   View,
   Text,
@@ -6,6 +6,8 @@ import {
   ScrollView,
   ActivityIndicator,
   StyleSheet,
+  Animated,
+  Dimensions,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Calendar, LocaleConfig, type CalendarProps, type DateData } from 'react-native-calendars';
@@ -29,6 +31,8 @@ const ENTRY_COLOR = '#34D399';
 const SUNDAY_COLOR = '#EF4444';
 const SATURDAY_COLOR = '#3B82F6';
 const DOW_JA = ['日', '月', '火', '水', '木', '金', '土'] as const;
+const SCREEN_WIDTH = Dimensions.get('window').width;
+const SWIPE_THRESHOLD = 60;
 
 function toMonthKey(year: number, month: number) {
   return `${year}-${String(month).padStart(2, '0')}`;
@@ -96,27 +100,40 @@ export default function CalendarScreen() {
 
   useFocusEffect(useCallback(() => { refetch(); }, [refetch]));
 
-  const prevMonth = useCallback(() => {
-    setDisplayMonth((prev) => {
-      const d = new Date(prev.year, prev.month - 2, 1);
-      return { year: d.getFullYear(), month: d.getMonth() + 1 };
-    });
-  }, []);
+  // ── スライドアニメーション ─────────────────────────────────────
+  const [slideAnim] = useState(() => new Animated.Value(0));
 
-  const nextMonth = useCallback(() => {
-    setDisplayMonth((prev) => {
-      const d = new Date(prev.year, prev.month, 1);
-      return { year: d.getFullYear(), month: d.getMonth() + 1 };
+  const changeMonth = useCallback((direction: 'next' | 'prev') => {
+    const exitTo = direction === 'next' ? -SCREEN_WIDTH : SCREEN_WIDTH;
+    Animated.timing(slideAnim, {
+      toValue: exitTo,
+      duration: 220,
+      useNativeDriver: true,
+    }).start(() => {
+      setDisplayMonth((prev) => {
+        const d = direction === 'next'
+          ? new Date(prev.year, prev.month, 1)
+          : new Date(prev.year, prev.month - 2, 1);
+        return { year: d.getFullYear(), month: d.getMonth() + 1 };
+      });
+      slideAnim.setValue(-exitTo);
+      Animated.timing(slideAnim, {
+        toValue: 0,
+        duration: 220,
+        useNativeDriver: true,
+      }).start();
     });
-  }, []);
+  }, [slideAnim]);
 
+  // ── スワイプジェスチャー（タッチ座標を追跡）──────────────────────
+  // onTouchStart/onTouchEnd はイベントハンドラ内でのみ .current を読み書きするため linter セーフ
+  const swipeStartXRef = useRef(0);
+
+  // ── カレンダーのマーク ─────────────────────────────────────────
   const entryMarks = Object.keys(entriesByDate).reduce<MarkedDates>((acc, date) => {
     acc[date] = {
       customStyles: {
-        container: {
-          backgroundColor: ENTRY_COLOR,
-          borderRadius: 6,
-        },
+        container: { backgroundColor: ENTRY_COLOR, borderRadius: 6 },
         text: { color: '#fff', fontWeight: '700' },
       },
     };
@@ -155,32 +172,56 @@ export default function CalendarScreen() {
 
   return (
     <View style={styles.container}>
-      {/* カスタムヘッダー */}
+      {/* ヘッダー（月ナビゲーション） */}
       <View style={styles.headerRow}>
-        <TouchableOpacity onPress={prevMonth} style={styles.arrowBtn} hitSlop={8}>
+        <TouchableOpacity
+          onPress={() => changeMonth('prev')}
+          style={styles.arrowBtn}
+          hitSlop={8}
+        >
           <Ionicons name="chevron-back" size={22} color={COLORS.primary} />
         </TouchableOpacity>
+
         <View style={styles.monthPill}>
           <Text style={styles.monthPillText}>
             {displayMonth.year}年{displayMonth.month}月
           </Text>
+          {loading && (
+            <ActivityIndicator
+              size="small"
+              color={COLORS.primary}
+              style={styles.monthLoader}
+            />
+          )}
         </View>
-        <TouchableOpacity onPress={nextMonth} style={styles.arrowBtn} hitSlop={8}>
+
+        <TouchableOpacity
+          onPress={() => changeMonth('next')}
+          style={styles.arrowBtn}
+          hitSlop={8}
+        >
           <Ionicons name="chevron-forward" size={22} color={COLORS.primary} />
         </TouchableOpacity>
       </View>
 
-      {loading ? (
-        <ActivityIndicator size="large" color={COLORS.primary} style={styles.loader} />
-      ) : (
-        <>
+      {/* スワイプ対応エリア（カレンダー + バナー） */}
+      <View
+        style={styles.slideWrapper}
+        onTouchStart={(e) => { swipeStartXRef.current = e.nativeEvent.pageX; }}
+        onTouchEnd={(e) => {
+          const dx = e.nativeEvent.pageX - swipeStartXRef.current;
+          if (dx < -SWIPE_THRESHOLD) changeMonth('next');
+          else if (dx > SWIPE_THRESHOLD) changeMonth('prev');
+        }}
+      >
+        <Animated.View style={{ transform: [{ translateX: slideAnim }] }}>
           <Calendar
             key={displayMonthStr}
             current={`${displayMonthStr}-01`}
             hideArrows
             renderHeader={() => <View />}
             markingType="custom"
-            markedDates={markedDates}
+            markedDates={loading ? buildWeekendMarks(displayMonthStr) : markedDates}
             onDayPress={handleDayPress}
             theme={
               {
@@ -209,26 +250,27 @@ export default function CalendarScreen() {
               </View>
             )}
           </View>
+        </Animated.View>
+      </View>
 
-          <ScrollView style={styles.list} contentContainerStyle={styles.listContent}>
-            {selectedEntries.length === 0 ? (
-              <View style={styles.emptyDay}>
-                <Ionicons name="journal-outline" size={28} color={COLORS.textTertiary} />
-                <Text style={styles.emptyDayText}>この日は記録がありません</Text>
-                <Text style={styles.emptyDayHint}>右下のボタンで日記を追加できます</Text>
-              </View>
-            ) : (
-              selectedEntries.map((entry) => (
-                <EntryCard
-                  key={entry.id}
-                  entry={entry}
-                  onPress={() => router.push(`/summary/${entry.id}`)}
-                />
-              ))
-            )}
-          </ScrollView>
-        </>
-      )}
+      {/* エントリーリスト（スワイプ対象外） */}
+      <ScrollView style={styles.list} contentContainerStyle={styles.listContent}>
+        {selectedEntries.length === 0 ? (
+          <View style={styles.emptyDay}>
+            <Ionicons name="journal-outline" size={28} color={COLORS.textTertiary} />
+            <Text style={styles.emptyDayText}>この日は記録がありません</Text>
+            <Text style={styles.emptyDayHint}>右下のボタンで日記を追加できます</Text>
+          </View>
+        ) : (
+          selectedEntries.map((entry) => (
+            <EntryCard
+              key={entry.id}
+              entry={entry}
+              onPress={() => router.push(`/summary/${entry.id}`)}
+            />
+          ))
+        )}
+      </ScrollView>
 
       <TouchableOpacity
         style={styles.fab}
@@ -246,7 +288,6 @@ export default function CalendarScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.surface },
-  loader: { flex: 1 },
 
   // ヘッダー
   headerRow: {
@@ -261,13 +302,23 @@ const styles = StyleSheet.create({
   },
   arrowBtn: { padding: 6 },
   monthPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
     backgroundColor: COLORS.surfaceAlt,
     borderRadius: RADIUS.full,
     paddingHorizontal: 18,
     paddingVertical: 6,
     marginHorizontal: 8,
+    gap: 6,
   },
   monthPillText: { fontSize: 15, fontWeight: '700', color: COLORS.textPrimary },
+  monthLoader: { width: 16, height: 16 },
+
+  // スライドエリア
+  slideWrapper: {
+    overflow: 'hidden',
+    backgroundColor: COLORS.surface,
+  },
 
   // 日付バナー
   banner: {
@@ -298,15 +349,8 @@ const styles = StyleSheet.create({
     paddingVertical: 40,
     gap: 8,
   },
-  emptyDayText: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: COLORS.textSecondary,
-  },
-  emptyDayHint: {
-    fontSize: 12,
-    color: COLORS.textTertiary,
-  },
+  emptyDayText: { fontSize: 15, fontWeight: '600', color: COLORS.textSecondary },
+  emptyDayHint: { fontSize: 12, color: COLORS.textTertiary },
 
   fab: {
     position: 'absolute',
@@ -331,17 +375,9 @@ const styles = StyleSheet.create({
     gap: 12,
     ...SHADOWS.sm,
   },
-  cardTimeCol: {
-    alignItems: 'center',
-    gap: 3,
-    minWidth: 36,
-  },
+  cardTimeCol: { alignItems: 'center', gap: 3, minWidth: 36 },
   cardTime: { fontSize: 12, fontWeight: '600', color: COLORS.textSecondary },
-  cardDivider: {
-    width: 1,
-    height: '80%',
-    backgroundColor: COLORS.border,
-  },
+  cardDivider: { width: 1, height: '80%', backgroundColor: COLORS.border },
   cardRight: { flex: 1 },
   cardBody: { fontSize: 14, color: COLORS.textPrimary, lineHeight: 20 },
 });
