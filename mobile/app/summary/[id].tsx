@@ -588,6 +588,7 @@ const styles = StyleSheet.create({
     marginTop: 24,
     backgroundColor: COLORS.primary,
     paddingVertical: 16,
+    paddingHorizontal: 32,
     borderRadius: RADIUS.full,
     ...SHADOWS.md,
   },
