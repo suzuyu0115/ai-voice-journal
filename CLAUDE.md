@@ -19,9 +19,10 @@ ai-voice-journal/
 | モバイル | React Native + Expo 56 (TypeScript) |
 | AI 会話・STT・TTS | Gemini Live API `gemini-2.5-flash-preview-native-audio`（リアルタイム双方向音声）|
 | 状態管理 | Zustand |
-| DB / Auth | Supabase |
+| DB / Auth | Supabase（匿名認証・RLS 有効）|
 | ナビゲーション | expo-router + `@expo/vector-icons`（タブアイコン）|
 | カレンダー | `react-native-calendars` |
+| スプラッシュ | `expo-splash-screen` |
 
 ## 主要コマンド
 
@@ -171,11 +172,11 @@ gh pr create \
 
 ### 完了済み（main にマージ済み）
 - Expo SDK 56 プロジェクト作成（`mobile/`）
-- 全パッケージインストール済み: expo-router, expo-av, expo-haptics, async-storage, zustand, @google/genai, @supabase/supabase-js, @expo/vector-icons, react-native-calendars
-- app.json 設定済み（scheme, マイク権限）
+- 全パッケージインストール済み: expo-router, expo-av, expo-haptics, async-storage, zustand, @google/genai, @supabase/supabase-js, @expo/vector-icons, react-native-calendars, expo-splash-screen
+- app.json 設定済み（scheme, マイク権限, スプラッシュ背景色）
 - GitHub リポジトリ作成・push済み
 - `src/lib/gemini.ts`・`src/lib/supabase.ts`・`src/store/journalStore.ts` 作成済み
-- **#19** フッターナビゲーションバー（4タブ: ホーム・会話・カレンダー・設定）
+- **#19** フッターナビゲーションバー（4タブ: 会話・ホーム・カレンダー・設定）
 - **#8** サマリー画面実装（Gemini によるタイトル+本文生成・編集モード・Supabase 保存・会話履歴表示）
 - **#21** カレンダー画面実装（月間カレンダー・日記エントリープレビュー）
 - **#31** 設定画面実装（iOS Settings スタイル UI・アプリバージョン表示・各機能プレースホルダー）
@@ -186,22 +187,30 @@ gh pr create \
 - **#40** 開発用シードデータ投入スクリプト（`mobile/scripts/seed.ts`）
 - **#9** ホーム画面を日記一覧（ジャーナルスタイル）に刷新（Supabase 取得・連続記録ストリーク、PR #44）
 - **#42** 会話機能を Gemini Live API に刷新（リアルタイム双方向音声・`useGeminiLive.ts`、PR #43）
+- **#55** Gemini Live 音声応答タイミング改善（エコー・遮り防止、PR #56）
+- **#50** カレンダー画面から日記を追加（FAB マイクボタン、PR #51）
+- **#45/#47/#49** 日付選択・カレンダーピッカー・匿名認証によるユーザーデータ分離（PR #52）
+- **#58** ストリーク表示を Duolingo 風大型カードにリデザイン（PR #59）
+- **#62** Supabase user_id NULL バグ修正・RLS 有効化・シードデータ更新（PR #63）
+- **#64** UI改善: カレンダー月切替スライドアニメーション・スワイプ・ヘッダータイトル中央寄せ・会話タブをメインに変更（PR #66）
 
 ### オープン PR（未マージ）
-- **PR #59** (#58): ストリーク表示を Duolingo 風大型カードにリデザイン（固定表示・ステージ別カラー）
+- **PR #68** (#67): 起動時スプラッシュスクリーン（フェードイン・ホールド・フェードアウト 計約2秒）
 
 ### コードの状態
-- `app/(tabs)/conversation.tsx`: Gemini Live UI に全面刷新（マイクボタン・ステータス表示・会話バブル）
-- `app/(tabs)/index.tsx`: 日記一覧（ジャーナルスタイル）、Duolingo 風ストリークカード固定表示（ストリーク数に応じて色変化）
-- `app/(tabs)/calendar.tsx`: FAB マイクボタン（selectedDate → targetDate → 会話画面遷移）
+- `app/_layout.tsx`: 起動時に匿名認証 + `expo-splash-screen` でスプラッシュ制御。`AppSplash` コンポーネントが認証完了後に約2秒表示
+- `app/(tabs)/_layout.tsx`: 会話タブが1番目（メイン）。`headerTitleAlign: 'center'`
+- `app/(tabs)/conversation.tsx`: Gemini Live UI（マイクボタン・ステータス表示・会話バブル）
+- `app/(tabs)/index.tsx`: 日記一覧（ジャーナルスタイル）、Duolingo 風ストリークカード固定表示（ステージ別カラー）
+- `app/(tabs)/calendar.tsx`: スライドアニメーション＋スワイプジェスチャーで月切替。キャッシュ済み月はインスタント表示。FAB でその日の日記作成
 - `app/summary/[id].tsx`: **2モード対応**（表示モード／作成モード）。ヘッダー日付タップでカレンダーモーダル
-- `app/_layout.tsx`: 起動時に匿名認証を自動初期化
-- `src/hooks/useGeminiLive.ts`: Gemini Live WebSocket、isWrappingUpRef パターンで会話終了管理
+- `src/hooks/useGeminiLive.ts`: Gemini Live WebSocket、`isWrappingUpRef` パターンで会話終了管理
+- `src/hooks/useCalendarEntries.ts`: モジュールレベルの `entriesCache (Map)` でフェッチ済み月をキャッシュ
 - `src/hooks/useAuth.ts`: Supabase 匿名認証フック
 - `src/hooks/useSummary.ts`: `entryDate`/`setEntryDate`（`targetDate` から初期化）
 - `src/hooks/useDiaryList.ts`: ホーム画面用日記一覧取得（Supabase、フォーカス時リフレッシュ）
 - `src/hooks/useDiaryEntry.ts`: 日記詳細取得・削除
-- `src/lib/supabase.ts`: `updateDiaryEntry`・`deleteDiaryEntry` 追加、`insertDiaryEntry` に `created_at` オプション追加
+- `src/lib/supabase.ts`: `insertDiaryEntry` が `user_id` を自動セット。`updateDiaryEntry`・`deleteDiaryEntry` 追加
 - `src/store/journalStore.ts`: `pendingMessages`・`targetDate`/`setTargetDate` 管理
 - `src/components/BottomTabBar.tsx` のみ残存（`RecordButton`・`ChatBubble` は #42 で削除済み）
 - 実機ビルド確認済み（bundleIdentifier: com.suzuyu0115.aivoicejournal、Personal Team 署名）
@@ -211,15 +220,16 @@ gh pr create \
 |--------|-----|------|
 | id | uuid | PK, auto |
 | created_at | timestamptz | auto |
+| user_id | uuid | auth.uid()（DB トリガーで自動セット）|
 | title | text | NOT NULL, max 50字 |
 | conversation_log | jsonb | `[{role, text}]` |
 | diary_text | text | AI生成本文 |
 | tags | text[] | |
 
-RLS: `auth.uid() = user_id`（匿名認証対応済み）
+RLS: 有効（`auth.uid() = user_id` ポリシー、匿名認証対応済み）
 
 ### 次のステップ
-- PR #59 (#58 ストリークリデザイン) をユーザーがレビュー・マージ → MVP 完成
+- PR #68 (#67 スプラッシュスクリーン) をユーザーがレビュー・マージ → MVP 完成
 
 ---
 
@@ -252,14 +262,18 @@ RLS: `auth.uid() = user_id`（匿名認証対応済み）
 | #37 | 日記詳細画面に削除ボタンを実装 | feature | 完了（PR #38）|
 | #40 | 開発用シードデータ投入スクリプト | chore | 完了（PR #41）|
 | #42 | Gemini Live API による双方向音声会話に刷新 | feature | 完了（PR #43）|
-| #45 | 日記の日付を今日/昨日/一昨日から選択 | feature | PR #52（レビュー待ち）|
-| #47 | ヘッダー日付タップでカレンダーピッカー | feature | PR #52（レビュー待ち）|
-| #49 | 匿名認証でユーザーデータを分離 | feature | PR #52（レビュー待ち）|
+| #45 | 日記の日付を今日/昨日/一昨日から選択 | feature | 完了（PR #52）|
+| #47 | ヘッダー日付タップでカレンダーピッカー | feature | 完了（PR #52）|
+| #49 | 匿名認証でユーザーデータを分離 | feature | 完了（PR #52）|
 | #50 | カレンダー画面から日記を追加（FAB） | feature | 完了（PR #51）|
 | #53 | CLAUDE.md ドキュメント更新 | docs | 完了（PR #54）|
-| #58 | ストリーク表示を Duolingo 風にリデザイン | feature | PR #59（レビュー待ち）|
+| #55 | Gemini Live 音声応答タイミング改善 | fix | 完了（PR #56）|
+| #58 | ストリーク表示を Duolingo 風にリデザイン | feature | 完了（PR #59）|
+| #62 | Supabase user_id NULL バグ修正・RLS 有効化 | fix | 完了（PR #63）|
+| #64 | UI改善（カレンダースライド・タブ順序・ヘッダー） | feature | 完了（PR #66）|
+| #67 | 起動時スプラッシュスクリーン | feature | PR #68（レビュー待ち）|
 
 ## 推奨着手順序
 
-1. ~~#1〜#9, #16, #19, #21, #30〜#35, #37, #40, #42, #45, #47, #49, #50, #53~~ 完了済み
-2. PR #59 (#58 ストリークリデザイン) をマージ → MVP 完成
+1. ~~#1〜#9, #16, #19, #21, #30〜#35, #37, #40, #42, #45, #47, #49, #50, #53, #55, #58, #62, #64~~ 完了済み
+2. PR #68 (#67 スプラッシュスクリーン) をマージ → MVP 完成
