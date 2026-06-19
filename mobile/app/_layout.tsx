@@ -1,5 +1,5 @@
 import { Stack } from 'expo-router';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Animated, StyleSheet, Text, View } from 'react-native';
 import * as SplashScreen from 'expo-splash-screen';
 import { Ionicons } from '@expo/vector-icons';
@@ -13,9 +13,9 @@ const HOLD_MS = 1100;
 const FADE_OUT_MS = 400;
 
 function AppSplash({ onDone }: { onDone: () => void }) {
-  const opacity = useRef(new Animated.Value(0)).current;
-  const translateY = useRef(new Animated.Value(24)).current;
-  const iconScale = useRef(new Animated.Value(0.8)).current;
+  const [opacity] = useState(() => new Animated.Value(0));
+  const [translateY] = useState(() => new Animated.Value(24));
+  const [iconScale] = useState(() => new Animated.Value(0.8));
 
   useEffect(() => {
     Animated.parallel([
@@ -81,7 +81,11 @@ export default function RootLayout() {
 
 const splash = StyleSheet.create({
   container: {
-    ...StyleSheet.absoluteFillObject,
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
     backgroundColor: COLORS.primary,
     alignItems: 'center',
     justifyContent: 'center',
