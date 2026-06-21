@@ -24,10 +24,12 @@ const PLAYBACK_SAMPLE_RATE = 16000;
 const SYSTEM_INSTRUCTION = `あなたは内省を深めるためのAI日記アシスタントです。音声で会話しています。
 ユーザーが話した内容に共感しながら、内省を促す質問を1文だけ短く返してください。日本語で回答してください。
 
-「まとめて」「終了して」「締めくくってください」などの指示を受けたときは、
-直前に質問をしていたとしてもその返答は求めず、今日の会話全体を振り返りながら
-感謝・共感・励ましの言葉を1〜2文で締めくくってください。
-締めくくりは必ず疑問形で終わらないこと。`;
+【重要ルール】
+- 1〜2回目の返答：質問を1文で返す
+- 3回目の返答：質問を一切せず、今日の会話全体への感謝・共感・励ましで自然に締めくくること。
+  テキストの末尾に必ず "${END_MARKER}" とだけ付けること（音声では読まない）。
+- 「まとめて」「終了して」「締めくくってください」などの指示を受けたときも同様に締めくくり "${END_MARKER}" を付けること。
+- 締めくくりは絶対に疑問形で終わらないこと。`;
 
 type Status = 'idle' | 'connecting' | 'connected' | 'error';
 
@@ -157,10 +159,13 @@ export function useGeminiLive(): UseGeminiLiveReturn {
         if (newEntries.length) setConversationLog((prev) => [...prev, ...newEntries]);
         finishConversation(modelText);
       } else {
-        if (modelText) newEntries.push({ role: 'model', text: modelText });
+        const shouldWrapUp = rallyCountRef.current >= MAX_RALLIES && !isWrappingUpRef.current;
+
+        // MAX_RALLIES 到達時は AI の返答（質問の場合あり）をログに出さず締めくくりへ移行
+        if (!shouldWrapUp && modelText) newEntries.push({ role: 'model', text: modelText });
         if (newEntries.length) setConversationLog((prev) => [...prev, ...newEntries]);
 
-        if (rallyCountRef.current >= MAX_RALLIES && !isWrappingUpRef.current) {
+        if (shouldWrapUp) {
           isWrappingUpRef.current = true;
           sessionRef.current?.sendRealtimeInput({
             text: '今日の話をありがとう。直前の質問への返答は不要です。今日の会話を振り返り、感謝と励ましの言葉で自然に締めくくってください。疑問形で終わらないこと。',
