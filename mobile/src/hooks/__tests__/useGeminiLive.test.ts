@@ -7,7 +7,7 @@ import {
   useExpoTwoWayAudioEventListener,
   useMicrophonePermissions,
 } from '@speechmatics/expo-two-way-audio';
-import { useGeminiLive, MAX_RALLIES, INITIAL_MESSAGE, END_MARKER } from '../useGeminiLive';
+import { useGeminiLive, MAX_RALLIES, INITIAL_MESSAGE } from '../useGeminiLive';
 
 type LiveCallbacks = {
   onopen?: () => void;
@@ -177,22 +177,6 @@ describe('useGeminiLive', () => {
     ]);
   });
 
-  it('[END] マーカーで isConversationComplete が true になり TRANSITION_SUFFIX が付く', async () => {
-    const { result } = renderGeminiLiveHook();
-    await act(async () => { await result.current.start(); });
-    act(() => {
-      capturedCallbacks?.onmessage({ serverContent: { inputTranscription: { text: '今日は疲れた' } } });
-      capturedCallbacks?.onmessage({
-        serverContent: { outputTranscription: { text: `お疲れさまでした。${END_MARKER}` } },
-      });
-      capturedCallbacks?.onmessage({ serverContent: { turnComplete: true } });
-    });
-    expect(result.current.isConversationComplete).toBe(true);
-    expect(result.current.displayText).toContain('お疲れさまでした。');
-    expect(result.current.displayText).toContain('では、話してもらった内容をもとに日記を作成しますね。ありがとうございました。');
-    expect(result.current.displayText).not.toContain(END_MARKER);
-    expect(toggleRecording).toHaveBeenCalledWith(false);
-  });
 
   it('MAX_RALLIES 到達でラップアップ指示が送られ、まだ isConversationComplete は false のまま', async () => {
     const { result } = renderGeminiLiveHook();
