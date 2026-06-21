@@ -8,9 +8,13 @@ import {
   TextInput,
   Alert,
   Modal,
+  Animated,
+  Dimensions,
 } from 'react-native';
 import { Stack, useRouter, useLocalSearchParams } from 'expo-router';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import ConfettiCannon from 'react-native-confetti-cannon';
+import * as Haptics from 'expo-haptics';
 import { Calendar } from 'react-native-calendars';
 import { Ionicons } from '@expo/vector-icons';
 import { useSummary } from '../../src/hooks/useSummary';
@@ -90,6 +94,45 @@ function DatePickerModal({
   );
 }
 
+function CelebrationOverlay({ visible, onClose }: { visible: boolean; onClose: () => void }) {
+  const [scaleAnim] = useState(() => new Animated.Value(0));
+
+  useEffect(() => {
+    if (visible) {
+      Animated.spring(scaleAnim, {
+        toValue: 1,
+        useNativeDriver: true,
+        tension: 100,
+        friction: 8,
+      }).start();
+    }
+  }, [visible, scaleAnim]);
+
+  if (!visible) return null;
+
+  return (
+    <Modal transparent animationType="fade" visible={visible}>
+      <View style={cs.overlay}>
+        <ConfettiCannon
+          count={120}
+          origin={{ x: Dimensions.get('window').width / 2, y: -20 }}
+          autoStart
+          fadeOut
+          colors={['#4A90E2', '#F59E0B', '#34D399', '#EC4899', '#8B5CF6']}
+        />
+        <Animated.View style={[cs.card, { transform: [{ scale: scaleAnim }] }]}>
+          <Text style={cs.emoji}>🎉</Text>
+          <Text style={cs.title}>日記を保存しました！</Text>
+          <Text style={cs.sub}>今日もよく記録できました</Text>
+          <TouchableOpacity style={cs.btn} onPress={onClose}>
+            <Text style={cs.btnText}>ホームへ</Text>
+          </TouchableOpacity>
+        </Animated.View>
+      </View>
+    </Modal>
+  );
+}
+
 export default function SummaryScreen() {
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -102,6 +145,7 @@ export default function SummaryScreen() {
   const [isEditing, setIsEditing] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
   const [showDatePicker, setShowDatePicker] = useState(false);
+  const [showCelebration, setShowCelebration] = useState(false);
 
   const [editTitle, setEditTitle] = useState('');
   const [editBody, setEditBody] = useState('');
@@ -112,7 +156,9 @@ export default function SummaryScreen() {
     const savedId = await saveEntry();
     if (savedId !== null) {
       clearPendingMessages();
-      router.replace('/');
+      await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      setShowCelebration(true);
+      setTimeout(() => router.replace('/'), 2500);
     }
   };
 
@@ -489,10 +535,43 @@ export default function SummaryScreen() {
         </ScrollView>
       )}
 
+      <CelebrationOverlay
+        visible={showCelebration}
+        onClose={() => router.replace('/')}
+      />
       <BottomTabBar />
     </View>
   );
 }
+
+const cs = StyleSheet.create({
+  overlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.55)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  card: {
+    backgroundColor: '#fff',
+    borderRadius: 24,
+    padding: 32,
+    alignItems: 'center',
+    gap: 8,
+    width: 280,
+    ...SHADOWS.md,
+  },
+  emoji: { fontSize: 56, lineHeight: 64 },
+  title: { fontSize: 20, fontWeight: '800', color: COLORS.textPrimary, marginTop: 8 },
+  sub: { fontSize: 14, color: COLORS.textSecondary },
+  btn: {
+    marginTop: 20,
+    backgroundColor: COLORS.primary,
+    paddingHorizontal: 32,
+    paddingVertical: 12,
+    borderRadius: RADIUS.full,
+  },
+  btnText: { color: '#fff', fontWeight: '700', fontSize: 15 },
+});
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: COLORS.background },
