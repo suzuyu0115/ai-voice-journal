@@ -206,7 +206,7 @@ describe('useGeminiLive', () => {
     }
     expect(result.current.isConversationComplete).toBe(false);
     expect(mockSession.sendRealtimeInput).toHaveBeenCalledWith(
-      expect.objectContaining({ text: expect.stringContaining('まとめて') })
+      expect.objectContaining({ text: expect.stringContaining('直前の質問への返答は不要') })
     );
   });
 
@@ -239,7 +239,7 @@ describe('useGeminiLive', () => {
       });
     }
     const wrapUpCalls = mockSession.sendRealtimeInput.mock.calls.filter(
-      ([arg]: [{ text?: string }]) => arg?.text?.includes('まとめて')
+      ([arg]: [{ text?: string }]) => arg?.text?.includes('直前の質問への返答は不要')
     );
     expect(wrapUpCalls).toHaveLength(1);
   });
