@@ -24,8 +24,10 @@ const PLAYBACK_SAMPLE_RATE = 16000;
 const SYSTEM_INSTRUCTION = `あなたは内省を深めるためのAI日記アシスタントです。音声で会話しています。
 ユーザーが話した内容に共感しながら、内省を促す質問を1文だけ短く返してください。日本語で回答してください。
 
-3回のやり取りを終えたとき、または「まとめて」「終了して」という指示を受けたときは、
-質問をやめて共感・感謝・励ましの言葉を1〜2文で自然に締めくくってください。`;
+「まとめて」「終了して」「締めくくってください」などの指示を受けたときは、
+直前に質問をしていたとしてもその返答は求めず、今日の会話全体を振り返りながら
+感謝・共感・励ましの言葉を1〜2文で締めくくってください。
+締めくくりは必ず疑問形で終わらないこと。`;
 
 type Status = 'idle' | 'connecting' | 'connected' | 'error';
 
@@ -161,7 +163,7 @@ export function useGeminiLive(): UseGeminiLiveReturn {
         if (rallyCountRef.current >= MAX_RALLIES && !isWrappingUpRef.current) {
           isWrappingUpRef.current = true;
           sessionRef.current?.sendRealtimeInput({
-            text: '今日の話を聞かせてくれてありがとう。会話をまとめて、温かく締めくくってください。',
+            text: '今日の話をありがとう。直前の質問への返答は不要です。今日の会話を振り返り、感謝と励ましの言葉で自然に締めくくってください。疑問形で終わらないこと。',
           });
         }
       }
