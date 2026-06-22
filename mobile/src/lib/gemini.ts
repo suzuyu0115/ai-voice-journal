@@ -41,7 +41,7 @@ export async function generateSummary(messages: Message[]): Promise<{ title: str
             parts: [
               {
                 text: `以下の会話をもとに日記を作成し、JSONで返してください。
-フォーマット: {"title": "日記のタイトル（20字以内）", "body": "日記の本文（400字以内、ユーザーの一人称視点で自然な文体で）"}
+フォーマット: {"title": "日記のタイトル（20字以内）", "body": "日記の本文（400字以内、ユーザーの一人称視点で自然な文体で、内容の区切りには\\nを入れて読みやすく段落を分けること）"}
 
 会話:
 ${conversation}`,
