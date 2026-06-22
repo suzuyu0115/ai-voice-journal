@@ -175,6 +175,7 @@ export function useGeminiLive(): UseGeminiLiveReturn {
     pendingUserTextRef.current = '';
     pendingModelTextRef.current = '';
     isWrappingUpRef.current = false;
+    isAiSpeakingRef.current = false;
 
     if (!micPermission?.granted) {
       const res = await requestMicPermission();
