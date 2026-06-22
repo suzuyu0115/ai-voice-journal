@@ -11,8 +11,7 @@ import {
 } from '@speechmatics/expo-two-way-audio';
 import type { Message } from '../lib/gemini';
 
-export const MAX_RALLIES = 3;
-export const END_MARKER = '[END]';
+export const MAX_RALLIES = 4;
 export const INITIAL_MESSAGE = 'こんにちは！今日はどんな一日でしたか？出来事や感じたことを詳しく聞かせてください。';
 const TRANSITION_SUFFIX = 'では、話してもらった内容をもとに日記を作成しますね。ありがとうございました。';
 
@@ -24,8 +23,10 @@ const PLAYBACK_SAMPLE_RATE = 16000;
 const SYSTEM_INSTRUCTION = `あなたは内省を深めるためのAI日記アシスタントです。音声で会話しています。
 ユーザーが話した内容に共感しながら、内省を促す質問を1文だけ短く返してください。日本語で回答してください。
 
-3回のやり取りを終えたとき、または「まとめて」「終了して」という指示を受けたときは、
-質問をやめて共感・感謝・励ましの言葉を1〜2文で自然に締めくくってください。`;
+【重要ルール】
+- 1〜2回目の返答：質問を1文で返す
+- 締めくくりを求められたとき：質問を一切せず、今日の会話全体への感謝・共感・励ましを1〜2文で自然に締めくくること。
+- 締めくくりは絶対に疑問形で終わらないこと。`;
 
 type Status = 'idle' | 'connecting' | 'connected' | 'error';
 
@@ -114,7 +115,7 @@ export function useGeminiLive(): UseGeminiLiveReturn {
     const outputText = content.outputTranscription?.text;
     if (outputText) {
       pendingModelTextRef.current += outputText;
-      setDisplayText(pendingModelTextRef.current.replace(END_MARKER, ''));
+      setDisplayText(pendingModelTextRef.current);
     }
 
     const parts = content.modelTurn?.parts ?? [];
@@ -137,31 +138,29 @@ export function useGeminiLive(): UseGeminiLiveReturn {
       pendingUserTextRef.current = '';
       pendingModelTextRef.current = '';
 
-      const hasEndMarker = modelText.includes(END_MARKER);
-      const cleanText = modelText.replace(END_MARKER, '').trim();
-
       const newEntries: Message[] = [];
       if (userText) {
         newEntries.push({ role: 'user', text: userText });
         rallyCountRef.current += 1;
       }
 
-      if (hasEndMarker) {
-        // 安全網: Gemini が [END] を自発的に含めた場合
-        if (newEntries.length) setConversationLog((prev) => [...prev, ...newEntries]);
-        finishConversation(cleanText);
-      } else if (isWrappingUpRef.current && modelText) {
+      if (isWrappingUpRef.current && modelText) {
         // ラップアップ指示への応答が届いた → 会話終了（Gemini が [END] を発音する必要なし）
         if (newEntries.length) setConversationLog((prev) => [...prev, ...newEntries]);
         finishConversation(modelText);
       } else {
+        // MAX_RALLIES - 1 ターン完了時点でラップアップ指示を送り、マイクを止める
+        // → 次の AI レスポンスが直接締めくくり文になるため質問生成のタイムラグがなくなる
+        const shouldWrapUp = rallyCountRef.current >= MAX_RALLIES - 1 && !isWrappingUpRef.current;
+
         if (modelText) newEntries.push({ role: 'model', text: modelText });
         if (newEntries.length) setConversationLog((prev) => [...prev, ...newEntries]);
 
-        if (rallyCountRef.current >= MAX_RALLIES && !isWrappingUpRef.current) {
+        if (shouldWrapUp) {
           isWrappingUpRef.current = true;
+          toggleRecording(false);
           sessionRef.current?.sendRealtimeInput({
-            text: '今日の話を聞かせてくれてありがとう。会話をまとめて、温かく締めくくってください。',
+            text: '今日の話をありがとう。今日の会話を振り返り、感謝と励ましの言葉で自然に締めくくってください。疑問形で終わらないこと。',
           });
         }
       }
@@ -178,6 +177,7 @@ export function useGeminiLive(): UseGeminiLiveReturn {
     pendingUserTextRef.current = '';
     pendingModelTextRef.current = '';
     isWrappingUpRef.current = false;
+    isAiSpeakingRef.current = false;
 
     if (!micPermission?.granted) {
       const res = await requestMicPermission();

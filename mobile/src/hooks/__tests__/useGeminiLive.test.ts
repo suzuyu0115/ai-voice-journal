@@ -7,7 +7,7 @@ import {
   useExpoTwoWayAudioEventListener,
   useMicrophonePermissions,
 } from '@speechmatics/expo-two-way-audio';
-import { useGeminiLive, MAX_RALLIES, INITIAL_MESSAGE, END_MARKER } from '../useGeminiLive';
+import { useGeminiLive, MAX_RALLIES, INITIAL_MESSAGE } from '../useGeminiLive';
 
 type LiveCallbacks = {
   onopen?: () => void;
@@ -177,27 +177,11 @@ describe('useGeminiLive', () => {
     ]);
   });
 
-  it('[END] マーカーで isConversationComplete が true になり TRANSITION_SUFFIX が付く', async () => {
-    const { result } = renderGeminiLiveHook();
-    await act(async () => { await result.current.start(); });
-    act(() => {
-      capturedCallbacks?.onmessage({ serverContent: { inputTranscription: { text: '今日は疲れた' } } });
-      capturedCallbacks?.onmessage({
-        serverContent: { outputTranscription: { text: `お疲れさまでした。${END_MARKER}` } },
-      });
-      capturedCallbacks?.onmessage({ serverContent: { turnComplete: true } });
-    });
-    expect(result.current.isConversationComplete).toBe(true);
-    expect(result.current.displayText).toContain('お疲れさまでした。');
-    expect(result.current.displayText).toContain('では、話してもらった内容をもとに日記を作成しますね。ありがとうございました。');
-    expect(result.current.displayText).not.toContain(END_MARKER);
-    expect(toggleRecording).toHaveBeenCalledWith(false);
-  });
 
-  it('MAX_RALLIES 到達でラップアップ指示が送られ、まだ isConversationComplete は false のまま', async () => {
+  it('MAX_RALLIES - 1 ターン完了後にマイク停止とラップアップ指示が送られ isConversationComplete は false のまま', async () => {
     const { result } = renderGeminiLiveHook();
     await act(async () => { await result.current.start(); });
-    for (let i = 0; i < MAX_RALLIES; i++) {
+    for (let i = 0; i < MAX_RALLIES - 1; i++) {
       act(() => {
         capturedCallbacks?.onmessage({ serverContent: { inputTranscription: { text: `発言${i + 1}` } } });
         capturedCallbacks?.onmessage({ serverContent: { outputTranscription: { text: `返答${i + 1}` } } });
@@ -205,22 +189,22 @@ describe('useGeminiLive', () => {
       });
     }
     expect(result.current.isConversationComplete).toBe(false);
+    expect(toggleRecording).toHaveBeenCalledWith(false);
     expect(mockSession.sendRealtimeInput).toHaveBeenCalledWith(
-      expect.objectContaining({ text: expect.stringContaining('まとめて') })
+      expect.objectContaining({ text: expect.stringContaining('締めくくって') })
     );
   });
 
-  it('MAX_RALLIES 到達後にラップアップ応答が届いたら isConversationComplete が true になる（[END] 不要）', async () => {
+  it('ラップアップ応答が届いたら isConversationComplete が true になる', async () => {
     const { result } = renderGeminiLiveHook();
     await act(async () => { await result.current.start(); });
-    for (let i = 0; i < MAX_RALLIES; i++) {
+    for (let i = 0; i < MAX_RALLIES - 1; i++) {
       act(() => {
         capturedCallbacks?.onmessage({ serverContent: { inputTranscription: { text: `発言${i + 1}` } } });
         capturedCallbacks?.onmessage({ serverContent: { outputTranscription: { text: `返答${i + 1}` } } });
         capturedCallbacks?.onmessage({ serverContent: { turnComplete: true } });
       });
     }
-    // [END] なしのラップアップ応答
     act(() => {
       capturedCallbacks?.onmessage({ serverContent: { outputTranscription: { text: '今日もお疲れさまでした。' } } });
       capturedCallbacks?.onmessage({ serverContent: { turnComplete: true } });
@@ -239,7 +223,7 @@ describe('useGeminiLive', () => {
       });
     }
     const wrapUpCalls = mockSession.sendRealtimeInput.mock.calls.filter(
-      ([arg]: [{ text?: string }]) => arg?.text?.includes('まとめて')
+      ([arg]: [{ text?: string }]) => arg?.text?.includes('締めくくって')
     );
     expect(wrapUpCalls).toHaveLength(1);
   });

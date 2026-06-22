@@ -3,60 +3,35 @@ import {
   Text,
   StyleSheet,
   TouchableOpacity,
-  ScrollView,
   ActivityIndicator,
   Animated,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useEffect, useRef, useCallback, useState } from 'react';
+import { useEffect, useCallback, useState } from 'react';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useGeminiLive } from '../../src/hooks/useGeminiLive';
 import { useJournalStore } from '../../src/store/journalStore';
 import { COLORS, SHADOWS, RADIUS } from '../../src/constants/theme';
-import type { Message } from '../../src/lib/gemini';
 
 const NAVIGATE_DELAY_MS = 2500;
 
-function ChatBubble({ message }: { message: Message }) {
-  const isUser = message.role === 'user';
-  return (
-    <View style={[styles.bubbleWrapper, isUser ? styles.bubbleWrapperUser : styles.bubbleWrapperAI]}>
-      {!isUser && (
-        <View style={styles.aiAvatar}>
-          <Text style={styles.aiAvatarText}>AI</Text>
-        </View>
-      )}
-      <View style={[styles.bubble, isUser ? styles.bubbleUser : styles.bubbleAI]}>
-        <Text style={[styles.bubbleText, isUser ? styles.bubbleTextUser : styles.bubbleTextAI]}>
-          {message.text}
-        </Text>
-      </View>
-    </View>
-  );
-}
-
-function LiveIndicator({ text, isAiSpeaking }: { text: string; isAiSpeaking: boolean }) {
+function StreamingDot({ visible }: { visible: boolean }) {
   const [dotAnim] = useState(() => new Animated.Value(0));
   useEffect(() => {
+    if (!visible) return;
     const anim = Animated.loop(
       Animated.sequence([
-        Animated.timing(dotAnim, { toValue: 1, duration: 600, useNativeDriver: true }),
-        Animated.timing(dotAnim, { toValue: 0, duration: 600, useNativeDriver: true }),
+        Animated.timing(dotAnim, { toValue: 1, duration: 500, useNativeDriver: true }),
+        Animated.timing(dotAnim, { toValue: 0, duration: 500, useNativeDriver: true }),
       ])
     );
     anim.start();
     return () => anim.stop();
-  }, [dotAnim]);
-  const dotOpacity = dotAnim.interpolate({ inputRange: [0, 1], outputRange: [0.3, 1] });
-  return (
-    <View style={[styles.liveRow, isAiSpeaking ? styles.liveRowAI : styles.liveRowUser]}>
-      <Animated.View style={[styles.liveDot, { opacity: dotOpacity, backgroundColor: isAiSpeaking ? COLORS.primary : COLORS.streakOrange }]} />
-      <Text style={[styles.liveText, { color: isAiSpeaking ? COLORS.primary : COLORS.streakOrange }]} numberOfLines={3}>
-        {text}
-      </Text>
-    </View>
-  );
+  }, [visible, dotAnim]);
+  if (!visible) return null;
+  const opacity = dotAnim.interpolate({ inputRange: [0, 1], outputRange: [0.3, 1] });
+  return <Animated.View style={[styles.streamingDot, { opacity }]} />;
 }
 
 export default function ConversationScreen() {
@@ -103,12 +78,6 @@ export default function ConversationScreen() {
     }
   }, [status, breathAnim]);
 
-  // Auto-scroll chat
-  const scrollRef = useRef<ScrollView>(null);
-  useEffect(() => {
-    scrollRef.current?.scrollToEnd({ animated: true });
-  }, [conversationLog.length, displayText]);
-
   // Navigate after completion
   useEffect(() => {
     if (!isConversationComplete) return;
@@ -147,11 +116,8 @@ export default function ConversationScreen() {
 
         <View style={styles.idleCenter}>
           <View style={styles.orbContainer}>
-            {/* outer ring */}
             <Animated.View style={[styles.breathRing, styles.breathRingOuter, { transform: [{ scale: breathScale }], opacity: breathOpacity }]} />
-            {/* mid ring */}
             <Animated.View style={[styles.breathRing, styles.breathRingMid, { transform: [{ scale: breathScale2 }], opacity: breathOpacity2 }]} />
-            {/* core */}
             <View style={styles.micCore}>
               <Ionicons name="mic" size={36} color="#fff" />
             </View>
@@ -170,13 +136,11 @@ export default function ConversationScreen() {
   }
 
   // ── Active / Connected state ─────────────────────────────────────
-  const showLog = conversationLog.length > 0;
-  const showLive = displayText.length > 0 && !isConversationComplete;
   const orbColor = isAiSpeaking ? COLORS.primary : COLORS.streakOrange;
 
   return (
     <SafeAreaView style={styles.activeScreen} edges={['left', 'right']}>
-      {/* Close button */}
+      {/* Header */}
       <View style={styles.activeHeader}>
         <Text style={styles.activeHeaderTitle}>会話中</Text>
         {!isConversationComplete && (
@@ -187,34 +151,25 @@ export default function ConversationScreen() {
         )}
       </View>
 
-      {/* Chat log */}
-      <ScrollView
-        ref={scrollRef}
-        style={styles.chatArea}
-        contentContainerStyle={styles.chatContent}
-      >
-        {!showLog && status === 'connecting' && (
+      {/* AI response text area */}
+      <View style={styles.textArea}>
+        {status === 'connecting' ? (
           <View style={styles.connectingRow}>
             <ActivityIndicator size="small" color={COLORS.primary} />
             <Text style={styles.connectingText}>AIに接続中...</Text>
           </View>
-        )}
-
-        {showLog && conversationLog.map((msg, i) => (
-          <ChatBubble key={i} message={msg} />
-        ))}
-
-        {showLive && (
-          <LiveIndicator text={displayText} isAiSpeaking={isAiSpeaking} />
-        )}
-
-        {isConversationComplete && (
+        ) : isConversationComplete ? (
           <View style={styles.completeBanner}>
             <Text style={styles.completeBannerText}>✨ 日記を作成しています...</Text>
             <ActivityIndicator size="small" color={COLORS.primary} style={{ marginTop: 6 }} />
           </View>
+        ) : (
+          <>
+            <Text style={styles.aiResponseText}>{displayText}</Text>
+            <StreamingDot visible={isAiSpeaking} />
+          </>
         )}
-      </ScrollView>
+      </View>
 
       {/* Orb footer */}
       <View style={styles.activeFooter}>
@@ -238,7 +193,7 @@ export default function ConversationScreen() {
           </View>
         )}
         <Text style={styles.statusHint}>
-          {status === 'connecting' ? '接続中...' : isAiSpeaking ? 'AIが話しています' : '話しかけてください'}
+          {isAiSpeaking ? 'AIが話しています' : '話しかけてください'}
         </Text>
       </View>
     </SafeAreaView>
@@ -356,78 +311,26 @@ const styles = StyleSheet.create({
     color: COLORS.primary,
   },
 
-  // Chat
-  chatArea: { flex: 1 },
-  chatContent: {
-    paddingHorizontal: 16,
-    paddingVertical: 16,
-    gap: 12,
-    flexGrow: 1,
-    justifyContent: 'flex-end',
-  },
-
-  // Bubble
-  bubbleWrapper: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    gap: 8,
-  },
-  bubbleWrapperUser: { justifyContent: 'flex-end' },
-  bubbleWrapperAI: { justifyContent: 'flex-start' },
-  aiAvatar: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: COLORS.primary,
+  // AI response text area
+  textArea: {
+    flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 2,
+    paddingHorizontal: 28,
+    gap: 16,
   },
-  aiAvatarText: { fontSize: 9, fontWeight: '800', color: '#fff' },
-  bubble: {
-    maxWidth: '78%',
-    borderRadius: RADIUS.lg,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
+  aiResponseText: {
+    fontSize: 20,
+    lineHeight: 32,
+    color: COLORS.textPrimary,
+    textAlign: 'center',
+    fontWeight: '500',
   },
-  bubbleUser: {
-    backgroundColor: COLORS.bubbleUser,
-    borderBottomRightRadius: 4,
-    ...SHADOWS.sm,
-  },
-  bubbleAI: {
-    backgroundColor: COLORS.bubbleAI,
-    borderBottomLeftRadius: 4,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    ...SHADOWS.sm,
-  },
-  bubbleText: { fontSize: 15, lineHeight: 22 },
-  bubbleTextUser: { color: COLORS.bubbleUserText },
-  bubbleTextAI: { color: COLORS.bubbleAIText },
-
-  // Live indicator
-  liveRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 8,
-    paddingHorizontal: 4,
-    paddingVertical: 4,
-  },
-  liveRowAI: { justifyContent: 'flex-start' },
-  liveRowUser: { justifyContent: 'flex-end' },
-  liveDot: {
+  streamingDot: {
     width: 8,
     height: 8,
     borderRadius: 4,
-    marginTop: 7,
-    flexShrink: 0,
-  },
-  liveText: {
-    fontSize: 15,
-    lineHeight: 22,
-    fontStyle: 'italic',
-    flex: 1,
+    backgroundColor: COLORS.primary,
   },
 
   // Connecting / Complete states
@@ -444,13 +347,12 @@ const styles = StyleSheet.create({
   },
   completeBanner: {
     alignItems: 'center',
-    padding: 20,
+    padding: 24,
     backgroundColor: COLORS.surface,
     borderRadius: RADIUS.lg,
     borderWidth: 1,
     borderColor: COLORS.border,
     ...SHADOWS.sm,
-    marginTop: 8,
   },
   completeBannerText: {
     fontSize: 15,

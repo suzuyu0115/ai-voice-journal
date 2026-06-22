@@ -79,8 +79,10 @@ app/
 ### 会話終了ロジック
 
 - `turnComplete` ごとに `rallyCountRef` をインクリメント
-- `MAX_RALLIES (= 3)` 到達時 → ラップアップ指示テキストを Gemini に送信（`isWrappingUpRef` で二重送信防止）
-- AI が `[END]` マーカーを返したとき → `finishConversation()` でサマリー画面へ遷移
+- `MAX_RALLIES - 1 (= 3)` 到達時 → マイク停止 + ラップアップ指示テキストを Gemini に送信（`isWrappingUpRef` で二重送信防止）
+  - **1ターン前倒し**にすることで、質問生成フェーズを排除しタイムラグをなくす
+  - Gemini の次のレスポンスが直接締めくくり文になる
+- `isWrappingUpRef.current && modelText` のとき → `finishConversation()` でサマリー画面へ遷移
 - 「まとめる」ボタン押下時も即座に `finishConversation()`
 
 ## ディレクトリ規約
@@ -168,11 +170,11 @@ gh pr create \
 
 ---
 
-## 現在の実装状況（2026-06-19時点）
+## 現在の実装状況（2026-06-22時点）
 
 ### 完了済み（main にマージ済み）
 - Expo SDK 56 プロジェクト作成（`mobile/`）
-- 全パッケージインストール済み: expo-router, expo-av, expo-haptics, async-storage, zustand, @google/genai, @supabase/supabase-js, @expo/vector-icons, react-native-calendars, expo-splash-screen
+- 全パッケージインストール済み: expo-router, expo-av, expo-haptics, async-storage, zustand, @google/genai, @supabase/supabase-js, @expo/vector-icons, react-native-calendars, expo-splash-screen, react-native-confetti-cannon
 - app.json 設定済み（scheme, マイク権限, スプラッシュ背景色）
 - GitHub リポジトリ作成・push済み
 - `src/lib/gemini.ts`・`src/lib/supabase.ts`・`src/store/journalStore.ts` 作成済み
@@ -193,18 +195,20 @@ gh pr create \
 - **#58** ストリーク表示を Duolingo 風大型カードにリデザイン（PR #59）
 - **#62** Supabase user_id NULL バグ修正・RLS 有効化・シードデータ更新（PR #63）
 - **#64** UI改善: カレンダー月切替スライドアニメーション・スワイプ・ヘッダータイトル中央寄せ・会話タブをメインに変更（PR #66）
+- **#67** 起動時スプラッシュスクリーン（フェードイン・ホールド・フェードアウト 計約2秒、PR #68）
 
 ### オープン PR（未マージ）
-- **PR #68** (#67): 起動時スプラッシュスクリーン（フェードイン・ホールド・フェードアウト 計約2秒）
+- **PR #71** (#70): 日記保存時の達成演出（confetti・ハプティクス・成功カード）
+- **PR #73** (#72 + #74 + 追加修正複数): 会話画面UI簡略化 + 会話品質改善一式
 
 ### コードの状態
 - `app/_layout.tsx`: 起動時に匿名認証 + `expo-splash-screen` でスプラッシュ制御。`AppSplash` コンポーネントが認証完了後に約2秒表示
 - `app/(tabs)/_layout.tsx`: 会話タブが1番目（メイン）。`headerTitleAlign: 'center'`
-- `app/(tabs)/conversation.tsx`: Gemini Live UI（マイクボタン・ステータス表示・会話バブル）
+- `app/(tabs)/conversation.tsx`: Gemini Live UI。アクティブ時はAIの応答テキストのみ中央に大きく表示（チャットバブル廃止）。Orb で音量可視化
 - `app/(tabs)/index.tsx`: 日記一覧（ジャーナルスタイル）、Duolingo 風ストリークカード固定表示（ステージ別カラー）
 - `app/(tabs)/calendar.tsx`: スライドアニメーション＋スワイプジェスチャーで月切替。キャッシュ済み月はインスタント表示。FAB でその日の日記作成
-- `app/summary/[id].tsx`: **2モード対応**（表示モード／作成モード）。ヘッダー日付タップでカレンダーモーダル
-- `src/hooks/useGeminiLive.ts`: Gemini Live WebSocket、`isWrappingUpRef` パターンで会話終了管理
+- `app/summary/[id].tsx`: **2モード対応**（表示モード／作成モード）。ヘッダー日付タップでカレンダーモーダル。作成モードの保存時に confetti 達成演出
+- `src/hooks/useGeminiLive.ts`: Gemini Live WebSocket。`MAX_RALLIES = 4`（ユーザー3ターン後に締めくくり）。`isWrappingUpRef` パターンで会話終了管理。`MAX_RALLIES - 1` 到達時にマイク停止 + ラップアップ指示送信することで質問生成タイムラグを排除。`[END]` マーカーは廃止（音声で読み上げられるため）。`start()` 時に `isAiSpeakingRef` をリセット（マイク無効バグ対策）
 - `src/hooks/useCalendarEntries.ts`: モジュールレベルの `entriesCache (Map)` でフェッチ済み月をキャッシュ
 - `src/hooks/useAuth.ts`: Supabase 匿名認証フック
 - `src/hooks/useSummary.ts`: `entryDate`/`setEntryDate`（`targetDate` から初期化）
@@ -229,7 +233,8 @@ gh pr create \
 RLS: 有効（`auth.uid() = user_id` ポリシー、匿名認証対応済み）
 
 ### 次のステップ
-- PR #68 (#67 スプラッシュスクリーン) をユーザーがレビュー・マージ → MVP 完成
+- PR #73 (#72/#74 会話終了修正・会話UI簡略化) をユーザーがレビュー・マージ
+- PR #71 (#70 達成演出) をユーザーがレビュー・マージ
 
 ---
 
@@ -271,9 +276,15 @@ RLS: 有効（`auth.uid() = user_id` ポリシー、匿名認証対応済み）
 | #58 | ストリーク表示を Duolingo 風にリデザイン | feature | 完了（PR #59）|
 | #62 | Supabase user_id NULL バグ修正・RLS 有効化 | fix | 完了（PR #63）|
 | #64 | UI改善（カレンダースライド・タブ順序・ヘッダー） | feature | 完了（PR #66）|
-| #67 | 起動時スプラッシュスクリーン | feature | PR #68（レビュー待ち）|
+| #67 | 起動時スプラッシュスクリーン | feature | 完了（PR #68）|
+| #69 | 週次・月次レポート機能（感情トレンド・AI分析） | feature | V2 以降 |
+| #70 | 日記保存時の達成演出（confetti・ハプティクス） | feature | PR #71（レビュー待ち）|
+| #72 | 会話終了時に疑問形で終わるケースを修正 | bug | PR #73（レビュー待ち）|
+| #74 | 会話画面UIをAI応答テキストのみ表示に戻す | bug | PR #73（レビュー待ち）|
+| #75 | [END]マーカー読み上げ・最終ラリー質問読み上げ・マイク無効バグの修正 | bug | PR #73 に含む（レビュー待ち）|
 
 ## 推奨着手順序
 
-1. ~~#1〜#9, #16, #19, #21, #30〜#35, #37, #40, #42, #45, #47, #49, #50, #53, #55, #58, #62, #64~~ 完了済み
-2. PR #68 (#67 スプラッシュスクリーン) をマージ → MVP 完成
+1. ~~#1〜#9, #16, #19, #21, #30〜#35, #37, #40, #42, #45, #47, #49, #50, #53, #55, #58, #62, #64, #67~~ 完了済み
+2. PR #73 (#72/#74) をマージ
+3. PR #71 (#70 達成演出) をマージ → MVP 完成
