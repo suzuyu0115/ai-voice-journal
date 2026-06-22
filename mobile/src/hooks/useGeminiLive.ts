@@ -157,6 +157,7 @@ export function useGeminiLive(): UseGeminiLiveReturn {
 
         if (shouldWrapUp) {
           isWrappingUpRef.current = true;
+          setDisplayText('');
           sessionRef.current?.sendRealtimeInput({
             text: '今日の話をありがとう。直前の質問への返答は不要です。今日の会話を振り返り、感謝と励ましの言葉で自然に締めくくってください。疑問形で終わらないこと。',
           });
