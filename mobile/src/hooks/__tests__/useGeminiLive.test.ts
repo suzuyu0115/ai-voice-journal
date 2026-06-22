@@ -178,45 +178,9 @@ describe('useGeminiLive', () => {
   });
 
 
-  it('MAX_RALLIES 到達でラップアップ指示が送られ、まだ isConversationComplete は false のまま', async () => {
+  it('MAX_RALLIES - 1 ターン完了後にマイク停止とラップアップ指示が送られ isConversationComplete は false のまま', async () => {
     const { result } = renderGeminiLiveHook();
     await act(async () => { await result.current.start(); });
-    for (let i = 0; i < MAX_RALLIES; i++) {
-      act(() => {
-        capturedCallbacks?.onmessage({ serverContent: { inputTranscription: { text: `発言${i + 1}` } } });
-        capturedCallbacks?.onmessage({ serverContent: { outputTranscription: { text: `返答${i + 1}` } } });
-        capturedCallbacks?.onmessage({ serverContent: { turnComplete: true } });
-      });
-    }
-    expect(result.current.isConversationComplete).toBe(false);
-    expect(mockSession.sendRealtimeInput).toHaveBeenCalledWith(
-      expect.objectContaining({ text: expect.stringContaining('直前の質問への返答は不要') })
-    );
-  });
-
-  it('MAX_RALLIES 到達後にラップアップ応答が届いたら isConversationComplete が true になる（[END] 不要）', async () => {
-    const { result } = renderGeminiLiveHook();
-    await act(async () => { await result.current.start(); });
-    for (let i = 0; i < MAX_RALLIES; i++) {
-      act(() => {
-        capturedCallbacks?.onmessage({ serverContent: { inputTranscription: { text: `発言${i + 1}` } } });
-        capturedCallbacks?.onmessage({ serverContent: { outputTranscription: { text: `返答${i + 1}` } } });
-        capturedCallbacks?.onmessage({ serverContent: { turnComplete: true } });
-      });
-    }
-    // [END] なしのラップアップ応答
-    act(() => {
-      capturedCallbacks?.onmessage({ serverContent: { outputTranscription: { text: '今日もお疲れさまでした。' } } });
-      capturedCallbacks?.onmessage({ serverContent: { turnComplete: true } });
-    });
-    expect(result.current.isConversationComplete).toBe(true);
-  });
-
-  it('最終ラリーのAI音声・テキストはミュートされ、ラップアップ応答は再生される', async () => {
-    const { result } = renderGeminiLiveHook();
-    await act(async () => { await result.current.start(); });
-
-    // MAX_RALLIES - 1 回まで通常の会話
     for (let i = 0; i < MAX_RALLIES - 1; i++) {
       act(() => {
         capturedCallbacks?.onmessage({ serverContent: { inputTranscription: { text: `発言${i + 1}` } } });
@@ -224,29 +188,27 @@ describe('useGeminiLive', () => {
         capturedCallbacks?.onmessage({ serverContent: { turnComplete: true } });
       });
     }
+    expect(result.current.isConversationComplete).toBe(false);
+    expect(toggleRecording).toHaveBeenCalledWith(false);
+    expect(mockSession.sendRealtimeInput).toHaveBeenCalledWith(
+      expect.objectContaining({ text: expect.stringContaining('締めくくって') })
+    );
+  });
 
-    const playCallsBefore = (playPCMData as jest.Mock).mock.calls.length;
-
-    // 最終ラリー（MAX_RALLIES回目）の AI 応答はミュートされる
+  it('ラップアップ応答が届いたら isConversationComplete が true になる', async () => {
+    const { result } = renderGeminiLiveHook();
+    await act(async () => { await result.current.start(); });
+    for (let i = 0; i < MAX_RALLIES - 1; i++) {
+      act(() => {
+        capturedCallbacks?.onmessage({ serverContent: { inputTranscription: { text: `発言${i + 1}` } } });
+        capturedCallbacks?.onmessage({ serverContent: { outputTranscription: { text: `返答${i + 1}` } } });
+        capturedCallbacks?.onmessage({ serverContent: { turnComplete: true } });
+      });
+    }
     act(() => {
-      capturedCallbacks?.onmessage({ serverContent: { inputTranscription: { text: '最後の発言' } } });
-      capturedCallbacks?.onmessage({ serverContent: { modelTurn: { parts: [{ inlineData: { data: pcmBase64(), mimeType: 'audio/pcm;rate=24000' } }] } } } );
-      capturedCallbacks?.onmessage({ serverContent: { outputTranscription: { text: '最後の質問' } } });
+      capturedCallbacks?.onmessage({ serverContent: { outputTranscription: { text: '今日もお疲れさまでした。' } } });
       capturedCallbacks?.onmessage({ serverContent: { turnComplete: true } });
     });
-
-    expect(playPCMData).toHaveBeenCalledTimes(playCallsBefore);
-    // displayTextは前のラリーのテキストを保持（空白にならない）
-    expect(result.current.displayText).toBe(`返答${MAX_RALLIES - 1}`);
-
-    // ラップアップ応答は再生・表示される
-    act(() => {
-      capturedCallbacks?.onmessage({ serverContent: { modelTurn: { parts: [{ inlineData: { data: pcmBase64(), mimeType: 'audio/pcm;rate=24000' } }] } } });
-      capturedCallbacks?.onmessage({ serverContent: { outputTranscription: { text: 'お疲れさまでした！' } } });
-      capturedCallbacks?.onmessage({ serverContent: { turnComplete: true } });
-    });
-
-    expect(playPCMData).toHaveBeenCalledTimes(playCallsBefore + 1);
     expect(result.current.isConversationComplete).toBe(true);
   });
 
@@ -261,7 +223,7 @@ describe('useGeminiLive', () => {
       });
     }
     const wrapUpCalls = mockSession.sendRealtimeInput.mock.calls.filter(
-      ([arg]: [{ text?: string }]) => arg?.text?.includes('直前の質問への返答は不要')
+      ([arg]: [{ text?: string }]) => arg?.text?.includes('締めくくって')
     );
     expect(wrapUpCalls).toHaveLength(1);
   });

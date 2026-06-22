@@ -114,26 +114,19 @@ export function useGeminiLive(): UseGeminiLiveReturn {
 
     const outputText = content.outputTranscription?.text;
     if (outputText) {
-      // 最終ラリー（MAX_RALLIES回目）のAI応答は表示・再生しない
-      const isMutingLastRally = rallyCountRef.current >= MAX_RALLIES - 1 && !isWrappingUpRef.current;
-      if (!isMutingLastRally) {
-        pendingModelTextRef.current += outputText;
-        setDisplayText(pendingModelTextRef.current);
-      }
+      pendingModelTextRef.current += outputText;
+      setDisplayText(pendingModelTextRef.current);
     }
 
     const parts = content.modelTurn?.parts ?? [];
     for (const part of parts) {
       const inline = part.inlineData;
       if (inline?.data && inline.mimeType?.startsWith('audio/')) {
-        const isMutingLastRally = rallyCountRef.current >= MAX_RALLIES - 1 && !isWrappingUpRef.current;
-        if (!isMutingLastRally) {
-          isAiSpeakingRef.current = true;
-          setIsAiSpeaking(true);
-          const raw = new Uint8Array(Buffer.from(inline.data, 'base64'));
-          const downsampled = downsamplePcm16(raw, LIVE_OUTPUT_SAMPLE_RATE, PLAYBACK_SAMPLE_RATE);
-          playPCMData(downsampled);
-        }
+        isAiSpeakingRef.current = true;
+        setIsAiSpeaking(true);
+        const raw = new Uint8Array(Buffer.from(inline.data, 'base64'));
+        const downsampled = downsamplePcm16(raw, LIVE_OUTPUT_SAMPLE_RATE, PLAYBACK_SAMPLE_RATE);
+        playPCMData(downsampled);
       }
     }
 
@@ -156,16 +149,18 @@ export function useGeminiLive(): UseGeminiLiveReturn {
         if (newEntries.length) setConversationLog((prev) => [...prev, ...newEntries]);
         finishConversation(modelText);
       } else {
-        const shouldWrapUp = rallyCountRef.current >= MAX_RALLIES && !isWrappingUpRef.current;
+        // MAX_RALLIES - 1 ターン完了時点でラップアップ指示を送り、マイクを止める
+        // → 次の AI レスポンスが直接締めくくり文になるため質問生成のタイムラグがなくなる
+        const shouldWrapUp = rallyCountRef.current >= MAX_RALLIES - 1 && !isWrappingUpRef.current;
 
-        // MAX_RALLIES 到達時は AI の返答（質問の場合あり）をログに出さず締めくくりへ移行
-        if (!shouldWrapUp && modelText) newEntries.push({ role: 'model', text: modelText });
+        if (modelText) newEntries.push({ role: 'model', text: modelText });
         if (newEntries.length) setConversationLog((prev) => [...prev, ...newEntries]);
 
         if (shouldWrapUp) {
           isWrappingUpRef.current = true;
+          toggleRecording(false);
           sessionRef.current?.sendRealtimeInput({
-            text: '今日の話をありがとう。直前の質問への返答は不要です。今日の会話を振り返り、感謝と励ましの言葉で自然に締めくくってください。疑問形で終わらないこと。',
+            text: '今日の話をありがとう。今日の会話を振り返り、感謝と励ましの言葉で自然に締めくくってください。疑問形で終わらないこと。',
           });
         }
       }
