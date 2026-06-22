@@ -114,19 +114,26 @@ export function useGeminiLive(): UseGeminiLiveReturn {
 
     const outputText = content.outputTranscription?.text;
     if (outputText) {
-      pendingModelTextRef.current += outputText;
-      setDisplayText(pendingModelTextRef.current);
+      // 最終ラリー（MAX_RALLIES回目）のAI応答は表示・再生しない
+      const isMutingLastRally = rallyCountRef.current >= MAX_RALLIES - 1 && !isWrappingUpRef.current;
+      if (!isMutingLastRally) {
+        pendingModelTextRef.current += outputText;
+        setDisplayText(pendingModelTextRef.current);
+      }
     }
 
     const parts = content.modelTurn?.parts ?? [];
     for (const part of parts) {
       const inline = part.inlineData;
       if (inline?.data && inline.mimeType?.startsWith('audio/')) {
-        isAiSpeakingRef.current = true;
-        setIsAiSpeaking(true);
-        const raw = new Uint8Array(Buffer.from(inline.data, 'base64'));
-        const downsampled = downsamplePcm16(raw, LIVE_OUTPUT_SAMPLE_RATE, PLAYBACK_SAMPLE_RATE);
-        playPCMData(downsampled);
+        const isMutingLastRally = rallyCountRef.current >= MAX_RALLIES - 1 && !isWrappingUpRef.current;
+        if (!isMutingLastRally) {
+          isAiSpeakingRef.current = true;
+          setIsAiSpeaking(true);
+          const raw = new Uint8Array(Buffer.from(inline.data, 'base64'));
+          const downsampled = downsamplePcm16(raw, LIVE_OUTPUT_SAMPLE_RATE, PLAYBACK_SAMPLE_RATE);
+          playPCMData(downsampled);
+        }
       }
     }
 

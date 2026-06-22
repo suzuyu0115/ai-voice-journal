@@ -212,6 +212,43 @@ describe('useGeminiLive', () => {
     expect(result.current.isConversationComplete).toBe(true);
   });
 
+  it('最終ラリーのAI音声・テキストはミュートされ、ラップアップ応答は再生される', async () => {
+    const { result } = renderGeminiLiveHook();
+    await act(async () => { await result.current.start(); });
+
+    // MAX_RALLIES - 1 回まで通常の会話
+    for (let i = 0; i < MAX_RALLIES - 1; i++) {
+      act(() => {
+        capturedCallbacks?.onmessage({ serverContent: { inputTranscription: { text: `発言${i + 1}` } } });
+        capturedCallbacks?.onmessage({ serverContent: { outputTranscription: { text: `返答${i + 1}` } } });
+        capturedCallbacks?.onmessage({ serverContent: { turnComplete: true } });
+      });
+    }
+
+    const playCallsBefore = (playPCMData as jest.Mock).mock.calls.length;
+
+    // 最終ラリー（MAX_RALLIES回目）の AI 応答はミュートされる
+    act(() => {
+      capturedCallbacks?.onmessage({ serverContent: { inputTranscription: { text: '最後の発言' } } });
+      capturedCallbacks?.onmessage({ serverContent: { modelTurn: { parts: [{ inlineData: { data: pcmBase64(), mimeType: 'audio/pcm;rate=24000' } }] } } } );
+      capturedCallbacks?.onmessage({ serverContent: { outputTranscription: { text: '最後の質問' } } });
+      capturedCallbacks?.onmessage({ serverContent: { turnComplete: true } });
+    });
+
+    expect(playPCMData).toHaveBeenCalledTimes(playCallsBefore);
+    expect(result.current.displayText).toBe('');
+
+    // ラップアップ応答は再生・表示される
+    act(() => {
+      capturedCallbacks?.onmessage({ serverContent: { modelTurn: { parts: [{ inlineData: { data: pcmBase64(), mimeType: 'audio/pcm;rate=24000' } }] } } });
+      capturedCallbacks?.onmessage({ serverContent: { outputTranscription: { text: 'お疲れさまでした！' } } });
+      capturedCallbacks?.onmessage({ serverContent: { turnComplete: true } });
+    });
+
+    expect(playPCMData).toHaveBeenCalledTimes(playCallsBefore + 1);
+    expect(result.current.isConversationComplete).toBe(true);
+  });
+
   it('ラップアップ指示は1度しか送られない', async () => {
     const { result } = renderGeminiLiveHook();
     await act(async () => { await result.current.start(); });
