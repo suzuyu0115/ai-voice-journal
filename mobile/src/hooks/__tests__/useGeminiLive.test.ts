@@ -236,7 +236,8 @@ describe('useGeminiLive', () => {
     });
 
     expect(playPCMData).toHaveBeenCalledTimes(playCallsBefore);
-    expect(result.current.displayText).toBe('');
+    // displayTextは前のラリーのテキストを保持（空白にならない）
+    expect(result.current.displayText).toBe(`返答${MAX_RALLIES - 1}`);
 
     // ラップアップ応答は再生・表示される
     act(() => {
