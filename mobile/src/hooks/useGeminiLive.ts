@@ -11,7 +11,7 @@ import {
 } from '@speechmatics/expo-two-way-audio';
 import type { Message } from '../lib/gemini';
 
-export const MAX_RALLIES = 3;
+export const MAX_RALLIES = 4;
 export const INITIAL_MESSAGE = 'こんにちは！今日はどんな一日でしたか？出来事や感じたことを詳しく聞かせてください。';
 const TRANSITION_SUFFIX = 'では、話してもらった内容をもとに日記を作成しますね。ありがとうございました。';
 
