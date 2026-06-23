@@ -61,7 +61,9 @@ export function useSummary(): UseSummaryReturn {
         })),
         diary_text: body,
         tags: [],
-        created_at: `${entryDate}T12:00:00.000Z`,
+        created_at: entryDate === new Date().toISOString().slice(0, 10)
+          ? new Date().toISOString()
+          : `${entryDate}T12:00:00.000Z`,
       });
 
       addEntry({

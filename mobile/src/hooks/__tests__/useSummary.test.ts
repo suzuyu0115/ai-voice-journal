@@ -75,8 +75,10 @@ describe('useSummary', () => {
     await act(async () => {});
     await act(async () => { await result.current.saveEntry(); });
 
+    // 今日の日付では実際の現在時刻が使われる
+    const today = new Date().toISOString().slice(0, 10);
     expect(mockInsertDiaryEntry).toHaveBeenCalledWith(
-      expect.objectContaining({ created_at: expect.stringMatching(/T12:00:00\.000Z$/) })
+      expect.objectContaining({ created_at: expect.stringContaining(today) })
     );
   });
 
@@ -155,8 +157,10 @@ describe('useSummary', () => {
     let id: string | null = null;
     await act(async () => { id = await result.current.saveEntry(); });
 
+    // 今日の日付では実際の現在時刻が使われる
+    const today = new Date().toISOString().slice(0, 10);
     expect(mockInsertDiaryEntry).toHaveBeenCalledWith(
-      expect.objectContaining({ created_at: expect.stringMatching(/T12:00:00\.000Z$/) })
+      expect.objectContaining({ created_at: expect.stringContaining(today) })
     );
     expect(id).toBe('abc123');
   });
